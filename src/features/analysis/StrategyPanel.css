@@ -1,0 +1,280 @@
+/* ── Strategy Panel ────────────────────────────────────── */
+.strategy-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Section */
+.strategy-panel__section {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.strategy-panel__section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.strategy-panel__section-icon {
+  font-size: 1.3rem;
+}
+
+.strategy-panel__section-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Overall Signal Badge */
+.strategy-panel__overall {
+  margin-left: auto;
+  padding: 5px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.strategy-panel__overall--strong_buy {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.strategy-panel__overall--buy {
+  background: rgba(34, 197, 94, 0.08);
+  color: var(--green);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+}
+
+.strategy-panel__overall--neutral {
+  background: rgba(234, 179, 8, 0.1);
+  color: var(--yellow);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+}
+
+.strategy-panel__overall--sell {
+  background: rgba(239, 68, 68, 0.08);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.strategy-panel__overall--strong_sell {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Grid */
+.strategy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* Card */
+.strategy-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.strategy-card__title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 10px;
+}
+
+.strategy-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.strategy-card__row:last-of-type {
+  border-bottom: none;
+}
+
+.strategy-card__label {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.strategy-card__value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  text-align: right;
+}
+
+.strategy-card__value small {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.strategy-card__value--green {
+  color: var(--green);
+}
+
+.strategy-card__value--red {
+  color: var(--red);
+}
+
+/* Badge */
+.strategy-card__badge {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.strategy-card__badge--bull {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--green);
+}
+
+.strategy-card__badge--bear {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--red);
+}
+
+.strategy-card__badge--neutral {
+  background: rgba(234, 179, 8, 0.12);
+  color: var(--yellow);
+}
+
+/* Details list */
+.strategy-card__details {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+
+.strategy-card__details li {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+
+.strategy-card__details li::before {
+  content: '▸';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+/* Breakout */
+.strategy-card__breakout {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.15);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--green);
+  font-weight: 600;
+}
+
+.strategy-card__no-breakout {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.strategy-card__empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Conditions ────────────────────────────────────────── */
+.strategy-conditions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 640px) {
+  .strategy-conditions {
+    grid-template-columns: 1fr;
+  }
+}
+
+.strategy-conditions__group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.strategy-conditions__heading {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid;
+}
+
+.strategy-conditions__heading--buy {
+  color: var(--green);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.strategy-conditions__heading--sell {
+  color: var(--red);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Condition Item */
+.condition-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-2);
+  transition: border-color 0.2s;
+}
+
+.condition-item--met {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.condition-item--met-sell {
+  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.condition-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.condition-item__icon {
+  font-size: 0.85rem;
+}
+
+.condition-item__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.condition-item__desc {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.45;
+}

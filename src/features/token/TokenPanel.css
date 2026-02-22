@@ -1,0 +1,58 @@
+.token-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.token-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.token-panel__icon {
+  font-size: 1.4rem;
+}
+
+.token-panel__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.token-panel__body {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.token-panel__fetch-btn {
+  white-space: nowrap;
+  min-width: 110px;
+}
+
+.token-panel__input-group {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+}
+
+.token-panel__input {
+  flex: 1;
+  font-size: 0.82rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.token-panel__copy-btn {
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .token-panel__body {
+    flex-direction: column;
+  }
+}

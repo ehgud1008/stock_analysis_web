@@ -1,0 +1,242 @@
+.trading-signal {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 8px;
+}
+
+.trading-signal__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.trading-signal__icon {
+  font-size: 1.4rem;
+}
+
+.trading-signal__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.trading-signal__subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+/* API Key */
+.trading-signal__api-key {
+  margin-bottom: 16px;
+}
+
+.trading-signal__label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.trading-signal__key-input {
+  display: flex;
+  gap: 8px;
+}
+
+.trading-signal__key-input .input {
+  flex: 1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+}
+
+/* Indicators */
+.trading-signal__indicators {
+  margin-bottom: 16px;
+}
+
+.trading-signal__hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  background: rgba(99, 102, 241, 0.06);
+  border-radius: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.1);
+  line-height: 1.5;
+}
+
+.trading-signal__checkboxes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: all 0.2s;
+}
+
+.checkbox-label:hover {
+  border-color: var(--accent);
+}
+
+.checkbox-label:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text-primary);
+}
+
+.checkbox-label input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+/* Submit */
+.trading-signal__submit {
+  width: 100%;
+  margin-bottom: 16px;
+  font-size: 1rem;
+  padding: 14px;
+}
+
+/* Error */
+.trading-signal__error {
+  padding: 12px 16px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 10px;
+  color: var(--red);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+}
+
+/* Result */
+.trading-signal__result {
+  background: var(--surface-2);
+  border: 1px solid var(--accent-dim);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: fadeInUp 0.4s ease;
+}
+
+.trading-signal__result-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.08));
+  border-bottom: 1px solid var(--border-light);
+}
+
+.trading-signal__result-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.trading-signal__result-icon {
+  font-size: 1.2rem;
+}
+
+.trading-signal__result-body {
+  padding: 20px;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+/* Markdown rendered elements */
+.md-h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 20px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.md-h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin: 16px 0 8px;
+}
+
+.md-h4 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 12px 0 6px;
+}
+
+.md-p {
+  margin: 6px 0;
+  color: var(--text-secondary);
+}
+
+.md-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0;
+}
+
+.md-list li {
+  padding: 4px 0 4px 18px;
+  position: relative;
+}
+
+.md-list li::before {
+  content: '▹';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.md-list li strong {
+  color: var(--text-primary);
+}
+
+.md-list li code {
+  background: var(--surface-1);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.md-hr {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 16px 0;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
