@@ -78,7 +78,7 @@ function App() {
             {/* 4. 기술적 구조 분석 & 매매 전략 */}
             <StrategyPanel analysis={state.analysis} />
 
-            {/* 5. AI 고급 분석 (C/D/E) */}
+            {/* 5. AI 고급 분석*/}
             <AIAnalysisPanel analysis={state.analysis} />
           </>
         )}
