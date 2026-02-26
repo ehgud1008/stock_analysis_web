@@ -110,7 +110,7 @@ export async function fetchChartData(token, stockCode, chartType, baseDate) {
 export async function requestAIAnalysis(prompt) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey || apiKey.trim() === '') {
-    throw new Error('Gemini API Key가 설정되지 않았습니다. .env 파일의 VITE_GEMINI_API_KEY를 확인하세요.');
+    throw new Error('Gemini API Key가 설정되지 않았습니다. API_KEY를 확인하세요.');
   }
 
   const systemInstruction = `당신은 한국 주식 시장 전문 기술적 분석가입니다.
@@ -169,6 +169,8 @@ export async function requestAIAnalysis(prompt) {
 ────────────────────
 - 위 4️⃣~7️⃣ 분석 결과를 종합한 요약 (3~5문장)
 - 실제 AI로서 투자한다면 매수/매도/관망 중 무엇을 할 것인지 판단 및 근거
+- 너의 성향은 리스크를 감수하더라도 수익을 추구하는 성향이야. (리스크:안정 비율은 7:3 정도로 설정)
+- 단기(1~2주 이하), 중기(1~3개월 이하), 장기(3개월 이상)로 나누어서 의견을 제시해줘.
 
 [규칙]
 - 반드시 숫자와 구체적 근거를 제시하세요

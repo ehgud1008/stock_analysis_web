@@ -155,6 +155,23 @@
   margin-bottom: 12px;
 }
 
+/* Saved Message */
+.ai-analysis-panel__saved {
+  padding: 10px 14px;
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 8px;
+  color: var(--green);
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+}
+
+.ai-analysis-panel__saved--error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: var(--red);
+}
+
 /* Loading */
 .ai-analysis-panel__loading {
   text-align: center;
@@ -323,6 +340,33 @@
   color: var(--text-secondary);
   margin: 0 0 8px;
   line-height: 1.4;
+}
+
+/* Description Section */
+.cde-card__description {
+  margin: 12px 0;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+}
+
+.cde-card__description-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cde-card__description-text {
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  line-height: 1.7;
+  margin: 0;
+  word-break: keep-all;
 }
 
 /* Price Levels (Risk Management) */
@@ -512,4 +556,79 @@
   color: var(--text-secondary);
   line-height: 1.6;
   margin: 0;
+}
+
+/* Timeframe Section */
+.summary-card__timeframes {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.summary-card__timeframes-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px;
+}
+
+.summary-card__timeframes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeframe-card {
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  background: var(--surface-2);
+  transition: border-color 0.2s;
+}
+
+.timeframe-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.timeframe-card__icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.timeframe-card__label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.timeframe-card__name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.timeframe-card__period {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.timeframe-card__badge {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.timeframe-card__reasoning {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+  word-break: keep-all;
 }

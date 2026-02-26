@@ -301,6 +301,30 @@
   display: block;
 }
 
+/* Inline tooltip (inside stat labels) */
+.tooltip-wrapper--inline {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.tooltip-wrapper--inline .tooltip-trigger {
+  width: 15px;
+  height: 15px;
+  font-size: 0.6rem;
+}
+
+.tooltip-wrapper--inline .tooltip-content {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.tooltip-wrapper--inline .tooltip-content::before {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%) rotate(45deg);
+}
+
 /* Interpretation */
 .analysis-card__interpretation {
   font-size: 0.8rem;
