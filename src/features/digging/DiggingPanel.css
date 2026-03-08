@@ -1,0 +1,50 @@
+/* ── Digging Panel ─────────────────────────────────────── */
+.digging-panel {
+  animation: fadeInUp 0.3s ease;
+}
+
+.digging-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.digging-panel__icon {
+  font-size: 1.4rem;
+}
+
+.digging-panel__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.digging-panel__empty {
+  text-align: center;
+  padding: 80px 20px;
+  background: var(--surface-1);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+
+.digging-panel__empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.digging-panel__empty-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.digging-panel__empty-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
+}

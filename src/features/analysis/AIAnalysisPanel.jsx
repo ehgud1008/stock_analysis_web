@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
-import { requestAIAnalysis } from '../../api/kiwoomApi';
+import { requestAIAnalysis, fetchChartData } from '../../api/kiwoomApi';
+import { analyzeAll } from './indicators';
 import { saveAnalysis } from '../../utils/analysisStorage';
 import './AIAnalysisPanel.css';
 
@@ -29,7 +30,7 @@ function Tip({ text }) {
  * CDE 분석용 프롬프트 생성
  */
 function buildCDEPrompt(analysis, positionInfo) {
-  const { summary, ma, rsi, bollinger, ichimoku, volume, structure, strategy } = analysis;
+  const { summary, ma, rsi, bollinger, ichimoku, macd, stochastic, maCross, volume, structure, strategy } = analysis;
   const { trendStructure, atr, volumeAdvanced, supportResistance } = structure;
 
   const lines = [];
@@ -78,6 +79,9 @@ function buildCDEPrompt(analysis, positionInfo) {
   if (supportResistance.recentBreakout) {
     lines.push(`- 최근 돌파: ${supportResistance.recentBreakout.type} (${supportResistance.recentBreakout.level.toLocaleString()}원)`);
   }
+  if (supportResistance.recentBreakdown) {
+    lines.push(`- ⚠️ 지지 이탈: ${supportResistance.recentBreakdown.level.toLocaleString()}원 하회`);
+  }
   lines.push('');
 
   if (atr) {
@@ -98,11 +102,48 @@ function buildCDEPrompt(analysis, positionInfo) {
   Object.entries(ma.values).forEach(([key, val]) => {
     if (val !== null) lines.push(`- ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
   });
+  if (maCross) {
+    lines.push(`- ⚡ 최근 크로스: ${maCross.label}`);
+  }
   lines.push('');
 
   lines.push(`### RSI: ${rsi.signal.label}`);
+
   if (bollinger.bands) {
     lines.push(`### 볼린저: ${bollinger.signal.label} (상단 ${Math.round(bollinger.bands.upper).toLocaleString()}, 하단 ${Math.round(bollinger.bands.lower).toLocaleString()})`);
+    if (bollinger.squeeze) {
+      lines.push(`- 스퀴즈 상태: ${bollinger.squeeze.label}`);
+    }
+  }
+
+  if (macd) {
+    lines.push(`### MACD: ${macd.label}`);
+    lines.push(`- MACD Line: ${macd.macdLine.toFixed(2)}`);
+    lines.push(`- Signal Line: ${macd.signalLine.toFixed(2)}`);
+    lines.push(`- 히스토그램: ${macd.histogram.toFixed(2)}`);
+    if (macd.cross) {
+      lines.push(`- ⚡ ${macd.cross === 'golden' ? '골든크로스 발생!' : '데드크로스 발생!'}`);
+    }
+  }
+
+  if (stochastic) {
+    lines.push(`### 스토캐스틱: ${stochastic.signal.label}`);
+    if (stochastic.cross) {
+      lines.push(`- ⚡ ${stochastic.cross === 'golden' ? '%K/%D 골든크로스' : '%K/%D 데드크로스'}`);
+    }
+  }
+
+  if (ichimoku) {
+    lines.push(`### 일목균형표: ${ichimoku.signal.label}`);
+    if (ichimoku.values) {
+      lines.push(`- 전환선(9): ${Math.round(ichimoku.values.tenkanSen).toLocaleString()}원`);
+      lines.push(`- 기준선(26): ${Math.round(ichimoku.values.kijunSen).toLocaleString()}원`);
+      lines.push(`- 구름 상단: ${Math.round(ichimoku.values.cloudTop).toLocaleString()}원`);
+      lines.push(`- 구름 하단: ${Math.round(ichimoku.values.cloudBottom).toLocaleString()}원`);
+    }
+    if (ichimoku.signal.details?.length) {
+      ichimoku.signal.details.forEach(d => lines.push(`- ${d}`));
+    }
   }
   lines.push('');
 
@@ -114,109 +155,76 @@ function buildCDEPrompt(analysis, positionInfo) {
   strategy.sellConditions.forEach(c => lines.push(`  - ${c.met ? '🔴' : '⚪'} ${c.label}: ${c.desc}`));
   lines.push('');
 
-  lines.push(`---`);
-  lines.push(`위 분석 데이터를 바탕으로 아래 C, D, E, F 항목을 분석하세요.`);
+  return lines.join('\n');
+}
+
+// ── 멀티 타임프레임 분석 프롬프트 생성 ──────────────
+const TIMEFRAME_LABEL = { day: '일봉', week: '주봉', month: '월봉', year: '년봉' };
+const ALTERNATE_TIMEFRAME = { day: 'week', week: 'day', month: 'week', year: 'month' };
+
+function buildSecondaryAnalysisText(secondaryAnalysis, timeframeLabel) {
+  const { summary, ma, rsi, bollinger, macd, stochastic, maCross, structure, strategy } = secondaryAnalysis;
+  const { trendStructure, volumeAdvanced } = structure;
+  const lines = [];
+
+  lines.push(`## ${timeframeLabel} 기술적 분석 결과 (추가 타임프레임)`);
+  lines.push(`- 데이터 수: ${summary.dataCount}개`);
+  lines.push(`- 현재가: ${summary.currentPrice.toLocaleString()}원`);
+  lines.push(`- 기간 최고: ${summary.highestPrice.toLocaleString()}원 / 최저: ${summary.lowestPrice.toLocaleString()}원`);
   lines.push('');
-  lines.push(`## C. 기대값 분석 (Expectancy)`);
-  lines.push(`아래 형식으로 분석:`);
-  lines.push(`1. 유사 패턴 횟수 추정 (최근 데이터 기반)`);
-  lines.push(`2. 평균 상승폭 (%)`);
-  lines.push(`3. 평균 하락폭 (%)`);
-  lines.push(`4. 승률 추정 (%)`);
-  lines.push(`5. 기대값 = (승률 × 평균이익) - ((1-승률) × 평균손실)`);
-  lines.push(`6. 기대값이 0 이하이면 신호 약화로 판단`);
-  lines.push(`7. 위 분석 결과를 종합하여 기대값에 대한 상세 설명을 3~5문장으로 작성`);
+
+  lines.push(`### 추세 구조`);
+  lines.push(`- 패턴: ${trendStructure.pattern} (${trendStructure.direction})`);
+  lines.push(`- 추세 강도: ${trendStructure.strength}`);
+  trendStructure.details.forEach(d => lines.push(`- ${d}`));
   lines.push('');
-  lines.push(`## D. 리스크 관리 설계`);
-  lines.push(`1. 손절가 설정 (최근 스윙 저점 또는 ATR 기반, 구체적 가격)`);
-  lines.push(`2. 1차/2차 목표가 (구체적 가격)`);
-  lines.push(`3. 리스크 대비 보상비 (R:R)`);
-  lines.push(`4. Kelly Fraction 계산 (보수적으로 0.5 Kelly 적용)`);
-  lines.push(`5. 권장 포지션 비중 (%)`);
-  lines.push(`6. 위 리스크 관리 설계를 종합하여 리스크에 대한 상세 설명을 3~5문장으로 작성`);
+
+  lines.push(`### 이동평균선: ${ma.trend.label}`);
+  Object.entries(ma.values).forEach(([key, val]) => {
+    if (val !== null) lines.push(`- ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
+  });
+  if (maCross) lines.push(`- ⚡ 최근 크로스: ${maCross.label}`);
   lines.push('');
-  lines.push(`## E. 시나리오 확률`);
-  lines.push(`아래 3가지 시나리오의 확률을 합계 100%로 제시:`);
-  lines.push(`- 상승세 (bullish) %`);
-  lines.push(`- 하락세 (bearish) %`);
-  lines.push(`- 횡보세 (sideways) %`);
+
+  lines.push(`### RSI: ${rsi.signal.label}`);
+  if (bollinger.bands) {
+    lines.push(`### 볼린저: ${bollinger.signal.label}`);
+  }
+  if (macd) {
+    lines.push(`### MACD: ${macd.label}`);
+    if (macd.cross) lines.push(`- ⚡ ${macd.cross === 'golden' ? '골든크로스!' : '데드크로스!'}`);
+  }
+  if (stochastic) {
+    lines.push(`### 스토캐스틱: ${stochastic.signal.label}`);
+    if (stochastic.cross) lines.push(`- ⚡ ${stochastic.cross === 'golden' ? '골든크로스' : '데드크로스'}`);
+  }
   lines.push('');
-  lines.push(`## F. 총 요약`);
-  lines.push(`1. 위 C/D/E 분석 결과를 종합한 총 요약 (3~5문장)`);
-  lines.push(`2. AI로서 이 종목에 실제 투자한다면 매수할 것인지, 매도할 것인지, 관망할 것인지 판단`);
-  lines.push(`3. 판단 근거를 구체적으로 설명`);
-  lines.push(`4. 단기(1~2주 이하), 중기(1~3개월 이하), 장기(3개월 이상)로 나누어서 각각 의견을 제시`);
+
+  lines.push(`### 거래량`);
+  lines.push(`- 5일/20일 평균 증감률: ${volumeAdvanced.changeRate.toFixed(1)}%`);
   lines.push('');
-  lines.push(`반드시 아래 JSON 형식으로 응답하세요:`);
-  lines.push('```json');
-  lines.push(`{`);
-  lines.push(`  "expectancy": {`);
-  lines.push(`    "pattern_count": number,`);
-  lines.push(`    "avg_gain_pct": number,`);
-  lines.push(`    "avg_loss_pct": number,`);
-  lines.push(`    "win_rate_pct": number,`);
-  lines.push(`    "expectancy_value": number,`);
-  lines.push(`    "signal_weakened": boolean,`);
-  lines.push(`    "reasoning": "string",`);
-  lines.push(`    "description": "string (기대값 분석에 대한 상세 설명 3~5문장)"`);
-  lines.push(`  },`);
-  lines.push(`  "risk_management": {`);
-  lines.push(`    "stop_loss": number,`);
-  lines.push(`    "stop_loss_reason": "string",`);
-  lines.push(`    "target_1": number,`);
-  lines.push(`    "target_2": number,`);
-  lines.push(`    "risk_reward_ratio": "string",`);
-  lines.push(`    "kelly_fraction": number,`);
-  lines.push(`    "half_kelly": number,`);
-  lines.push(`    "recommended_position_pct": number,`);
-  lines.push(`    "reasoning": "string",`);
-  lines.push(`    "description": "string (리스크 관리 설계에 대한 상세 설명 3~5문장)"`);
-  lines.push(`  },`);
-  lines.push(`  "scenarios": {`);
-  lines.push(`    "bullish_pct": number,`);
-  lines.push(`    "bearish_pct": number,`);
-  lines.push(`    "sideways_pct": number,`);
-  lines.push(`    "bullish_desc": "string",`);
-  lines.push(`    "bearish_desc": "string",`);
-  lines.push(`    "sideways_desc": "string"`);
-  lines.push(`  },`);
-  lines.push(`  "summary": {`);
-  lines.push(`    "overall": "string (3~5문장 종합 요약)",`);
-  lines.push(`    "decision": "buy | sell | hold",`);
-  lines.push(`    "decision_label": "string (매수/매도/관망 한글)",`);
-  lines.push(`    "confidence_pct": number,`);
-  lines.push(`    "reasoning": "string (판단 근거)",`);
-  lines.push(`    "short_term": {`);
-  lines.push(`      "decision": "buy | sell | hold",`);
-  lines.push(`      "decision_label": "string",`);
-  lines.push(`      "reasoning": "string (단기 1~2주 이하 의견)"`);
-  lines.push(`    },`);
-  lines.push(`    "mid_term": {`);
-  lines.push(`      "decision": "buy | sell | hold",`);
-  lines.push(`      "decision_label": "string",`);
-  lines.push(`      "reasoning": "string (중기 1~3개월 이하 의견)"`);
-  lines.push(`    },`);
-  lines.push(`    "long_term": {`);
-  lines.push(`      "decision": "buy | sell | hold",`);
-  lines.push(`      "decision_label": "string",`);
-  lines.push(`      "reasoning": "string (장기 3개월 이상 의견)"`);
-  lines.push(`    }`);
-  lines.push(`  }`);
-  lines.push(`}`);
-  lines.push('```');
+
+  lines.push(`### 매매 전략`);
+  lines.push(`- 종합 판단: ${strategy.overallLabel}`);
+  lines.push(`- 매수 조건: ${strategy.buyScore}/3, 매도 조건: ${strategy.sellScore}/3`);
+  lines.push('');
 
   return lines.join('\n');
 }
 
 // ── 메인 컴포넌트 ────────────────────────────────────────
-export default function AIAnalysisPanel({ analysis }) {
+export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, stockCode }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [saved, setSaved] = useState(null); // null | 'success' | 'error'
-  const [positionType, setPositionType] = useState('new'); // 'new' | 'holding'
+  const [saved, setSaved] = useState(null);
+  const [positionType, setPositionType] = useState('new');
   const [holdingShares, setHoldingShares] = useState('');
   const [holdingAvgPrice, setHoldingAvgPrice] = useState('');
+  const [multiTimeframe, setMultiTimeframe] = useState(false);
+
+  const currentChartType = analysis?.summary?.chartType || 'day';
+  const altChartType = ALTERNATE_TIMEFRAME[currentChartType] || (currentChartType === 'day' ? 'week' : 'day');
 
   const handleRequest = useCallback(async () => {
     if (!analysis?.structure || !analysis?.strategy) return;
@@ -232,7 +240,28 @@ export default function AIAnalysisPanel({ analysis }) {
         shares: Number(holdingShares) || 0,
         avgPrice: Number(holdingAvgPrice) || 0,
       };
-      const prompt = buildCDEPrompt(analysis, positionInfo);
+
+      let prompt = buildCDEPrompt(analysis, positionInfo);
+
+      // 멀티 타임프레임: 추가 차트 데이터 조회 + 분석
+      if (multiTimeframe && token && stockCode) {
+        try {
+          const altData = await fetchChartData(token, stockCode, altChartType, baseDate);
+          const altChartArray = Object.values(altData).find(
+            (v) => Array.isArray(v) && v.length > 0 && v[0].cur_prc !== undefined
+          ) || [];
+
+          if (altChartArray.length > 0) {
+            const altAnalysis = analyzeAll(altChartArray);
+            const label = TIMEFRAME_LABEL[altChartType] || altChartType;
+            prompt += '\n\n' + buildSecondaryAnalysisText(altAnalysis, label);
+            prompt += `\n> ⚙️ 위 ${label} 데이터는 보조 타임프레임으로, 메인 분석과 함께 종합적으로 판단해 주세요.\n`;
+          }
+        } catch (altErr) {
+          console.warn('추가 타임프레임 데이터 조회 실패:', altErr.message);
+        }
+      }
+
       const raw = await requestAIAnalysis(prompt);
       const parsed = JSON.parse(raw);
       setResult(parsed);
@@ -241,8 +270,14 @@ export default function AIAnalysisPanel({ analysis }) {
       try {
         await saveAnalysis({
           stockCode: analysis.summary.stockCode,
+          stockName: stockName || '',
           currentPrice: analysis.summary.currentPrice,
           chartType: analysis.summary.chartType || '',
+          baseDate: baseDate || '',
+          positionType: positionInfo.type,
+          holdingShares: positionInfo.shares || null,
+          holdingAvgPrice: positionInfo.avgPrice || null,
+          multiTimeframe: multiTimeframe ? `${currentChartType}+${altChartType}` : null,
           decision: parsed.summary?.decision,
           decision_label: parsed.summary?.decision_label,
           confidence_pct: parsed.summary?.confidence_pct,
@@ -257,7 +292,7 @@ export default function AIAnalysisPanel({ analysis }) {
     } finally {
       setLoading(false);
     }
-  }, [analysis, positionType, holdingShares, holdingAvgPrice]);
+  }, [analysis, positionType, holdingShares, holdingAvgPrice, multiTimeframe, token, stockCode, altChartType, baseDate, stockName, currentChartType]);
 
   if (!analysis?.structure || !analysis?.strategy) return null;
 
@@ -321,6 +356,26 @@ export default function AIAnalysisPanel({ analysis }) {
         )}
       </div>
 
+      {/* 멀티 타임프레임 토글 */}
+      <div className="ai-multi-tf">
+        <label className="ai-multi-tf__toggle">
+          <input
+            type="checkbox"
+            checked={multiTimeframe}
+            onChange={(e) => setMultiTimeframe(e.target.checked)}
+          />
+          <span className="ai-multi-tf__check" />
+          <span className="ai-multi-tf__label">
+            멀티 타임프레임 분석
+          </span>
+        </label>
+        {multiTimeframe && (
+          <span className="ai-multi-tf__desc">
+            {TIMEFRAME_LABEL[currentChartType] || currentChartType} + {TIMEFRAME_LABEL[altChartType] || altChartType} 동시 분석
+          </span>
+        )}
+      </div>
+
       <button
         className="ai-analysis-panel__btn"
         onClick={handleRequest}
@@ -330,7 +385,7 @@ export default function AIAnalysisPanel({ analysis }) {
         {loading ? (
           <>
             <span className="ai-analysis-panel__spinner" />
-            분석 중…
+            {multiTimeframe ? '멀티 타임프레임 분석 중…' : '분석 중…'}
           </>
         ) : result ? '🔄 재분석' : '🚀 AI 분석 실행'}
       </button>

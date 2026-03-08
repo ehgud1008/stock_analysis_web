@@ -16,6 +16,7 @@ const INITIAL_STATE = {
 
   // 조회 조건
   stockCode: '',
+  stockName: '',
   chartType: 'day',
   baseDate: '',
 
@@ -56,6 +57,10 @@ export function useAnalysis() {
     (stockCode) => updateState({ stockCode }),
     [updateState]
   );
+  const setStockName = useCallback(
+    (stockName) => updateState({ stockName }),
+    [updateState]
+  );
   const setChartType = useCallback(
     (chartType) => updateState({ chartType }),
     [updateState]
@@ -82,10 +87,18 @@ export function useAnalysis() {
       );
       updateState({ chartData: data, status: 'analyzing' });
 
-      // 자동 기술 분석
-      const chartArray = data.stk_dt_pole_chart_qry || data.stk_min_pole_chart_qry || [];
+      // 자동 기술 분석 — 응답에서 차트 배열 키를 자동 탐색
+      const chartArray = Object.values(data).find(
+        (v) => Array.isArray(v) && v.length > 0 && v[0].cur_prc !== undefined
+      ) || [];
+
+      if (chartArray.length === 0) {
+        throw new Error('차트 데이터를 찾을 수 없습니다. API 응답을 확인해주세요.');
+      }
+
       const analysis = analyzeAll(chartArray);
-      analysis.summary.stockCode = data.stk_cd;
+      analysis.summary.stockCode = data.stk_cd || chartArray[0]?.stk_cd || state.stockCode;
+      analysis.summary.chartType = state.chartType;
       updateState({ analysis, status: 'done' });
     } catch (err) {
       updateState({ status: 'error', error: `데이터 조회/분석 실패: ${err.message}` });
@@ -102,6 +115,7 @@ export function useAnalysis() {
     handleFetchToken,
     setToken,
     setStockCode,
+    setStockName,
     setChartType,
     setBaseDate,
     handleFetchAndAnalyze,

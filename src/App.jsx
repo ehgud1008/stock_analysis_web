@@ -6,6 +6,7 @@ import AnalysisPanel from './features/analysis/AnalysisPanel';
 import StrategyPanel from './features/analysis/StrategyPanel';
 import AIAnalysisPanel from './features/analysis/AIAnalysisPanel';
 import HistoryPanel from './features/history/HistoryPanel';
+import DiggingPanel from './features/digging/DiggingPanel';
 import './App.css';
 
 function App() {
@@ -14,12 +15,14 @@ function App() {
     handleFetchToken,
     setToken,
     setStockCode,
+    setStockName,
     setChartType,
     setBaseDate,
     handleFetchAndAnalyze,
   } = useAnalysis();
 
   const [activeTab, setActiveTab] = useState('analysis');
+  const [analysisSubTab, setAnalysisSubTab] = useState('stock'); // 'stock' | 'digging'
   const isFetching = state.status === 'fetching_data' || state.status === 'analyzing';
 
   return (
@@ -64,7 +67,7 @@ function App() {
       <main className="app__main">
         {activeTab === 'analysis' ? (
           <>
-            {/* 1. 토큰 관리 */}
+            {/* 토큰 관리 (공통) */}
             <TokenPanel
               token={state.token}
               onFetchToken={handleFetchToken}
@@ -72,37 +75,67 @@ function App() {
               status={state.status}
             />
 
-            {/* 2. 종목 조회 */}
-            <StockInput
-              stockCode={state.stockCode}
-              chartType={state.chartType}
-              baseDate={state.baseDate}
-              onStockCodeChange={setStockCode}
-              onChartTypeChange={setChartType}
-              onBaseDateChange={setBaseDate}
-              onSubmit={handleFetchAndAnalyze}
-              isDisabled={!state.token}
-              isLoading={isFetching}
-            />
+            {/* Sub-tab Navigation */}
+            <nav className="app__sub-tabs">
+              <button
+                className={`app__sub-tab ${analysisSubTab === 'stock' ? 'app__sub-tab--active' : ''}`}
+                onClick={() => setAnalysisSubTab('stock')}
+              >
+                📊 종목 분석
+              </button>
+              <button
+                className={`app__sub-tab ${analysisSubTab === 'digging' ? 'app__sub-tab--active' : ''}`}
+                onClick={() => setAnalysisSubTab('digging')}
+              >
+                🔍 신규종목 디깅
+              </button>
+            </nav>
 
-            {/* 글로벌 에러 */}
-            {state.error && (
-              <div className="app__error">
-                <span>⚠️</span> {state.error}
-              </div>
-            )}
-
-            {/* 3. 분석 결과 */}
-            {state.analysis && (
+            {analysisSubTab === 'stock' ? (
               <>
-                <AnalysisPanel analysis={state.analysis} />
 
-                {/* 4. 기술적 구조 분석 & 매매 전략 */}
-                <StrategyPanel analysis={state.analysis} />
+                {/* 2. 종목 조회 */}
+                <StockInput
+                  stockCode={state.stockCode}
+                  chartType={state.chartType}
+                  baseDate={state.baseDate}
+                  onStockCodeChange={setStockCode}
+                  onStockNameChange={setStockName}
+                  onChartTypeChange={setChartType}
+                  onBaseDateChange={setBaseDate}
+                  onSubmit={handleFetchAndAnalyze}
+                  isDisabled={!state.token}
+                  isLoading={isFetching}
+                />
 
-                {/* 5. AI 고급 분석*/}
-                <AIAnalysisPanel analysis={state.analysis} />
+                {/* 글로벌 에러 */}
+                {state.error && (
+                  <div className="app__error">
+                    <span>⚠️</span> {state.error}
+                  </div>
+                )}
+
+                {/* 3. 분석 결과 */}
+                {state.analysis && (
+                  <>
+                    <AnalysisPanel analysis={state.analysis} />
+
+                    {/* 4. 기술적 구조 분석 & 매매 전략 */}
+                    <StrategyPanel analysis={state.analysis} />
+
+                    {/* 5. AI 고급 분석*/}
+                    <AIAnalysisPanel
+                      analysis={state.analysis}
+                      stockName={state.stockName}
+                      baseDate={state.baseDate}
+                      token={state.token}
+                      stockCode={state.stockCode}
+                    />
+                  </>
+                )}
               </>
+            ) : (
+              <DiggingPanel />
             )}
           </>
         ) : (
@@ -132,3 +165,4 @@ function getStatusLabel(status) {
 }
 
 export default App;
+

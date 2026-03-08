@@ -59,22 +59,30 @@ export function getMATrend(mas) {
   return { type: 'mixed', label: '혼조 배열' };
 }
 
-// ── RSI ──────────────────────────────────────────────────
+// ── RSI (Wilder Smoothing) ───────────────────────────────
 
 export function calcRSI(prices, period = 14) {
   if (prices.length < period + 1) return null;
 
-  let gains = 0;
-  let losses = 0;
-
-  for (let i = prices.length - period; i < prices.length; i++) {
+  // 첫 번째 평균 (SMA)
+  let avgGain = 0;
+  let avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
     const diff = prices[i] - prices[i - 1];
-    if (diff > 0) gains += diff;
-    else losses += Math.abs(diff);
+    if (diff > 0) avgGain += diff;
+    else avgLoss += Math.abs(diff);
   }
+  avgGain /= period;
+  avgLoss /= period;
 
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
+  // Wilder Smoothing (이후 봉)
+  for (let i = period + 1; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? Math.abs(diff) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+  }
 
   if (avgLoss === 0) return 100;
   const rs = avgGain / avgLoss;
@@ -97,7 +105,7 @@ export function calcBollingerBands(prices, period = 20, multiplier = 2) {
   const ma = slice.reduce((a, b) => a + b, 0) / period;
 
   const variance =
-    slice.reduce((sum, p) => sum + Math.pow(p - ma, 2), 0) / period;
+    slice.reduce((sum, p) => sum + Math.pow(p - ma, 2), 0) / (period - 1);
   const stdDev = Math.sqrt(variance);
 
   return {
@@ -416,7 +424,173 @@ export function findSupportResistance(swingHighs, swingLows, currentPrice) {
     }
   }
 
+  // 지지 이탈 돌파 감지
+  if (swingLows.length >= 1) {
+    const lastLow = swingLows[swingLows.length - 1];
+    if (currentPrice < lastLow.price) {
+      result.recentBreakdown = {
+        type: '지지 이탈',
+        level: lastLow.price,
+        dt: lastLow.dt,
+      };
+    }
+  }
+
   return result;
+}
+
+// ── EMA 헬퍼 ─────────────────────────────────────────
+
+function calcEMA(prices, period) {
+  if (prices.length < period) return [];
+  const k = 2 / (period + 1);
+  const ema = [prices.slice(0, period).reduce((a, b) => a + b, 0) / period];
+  for (let i = period; i < prices.length; i++) {
+    ema.push(prices[i] * k + ema[ema.length - 1] * (1 - k));
+  }
+  return ema;
+}
+
+// ── MACD (12, 26, 9) ────────────────────────────────
+
+export function calcMACD(prices, fast = 12, slow = 26, signal = 9) {
+  if (prices.length < slow + signal) return null;
+
+  const emaFast = calcEMA(prices, fast);
+  const emaSlow = calcEMA(prices, slow);
+
+  // MACD Line: EMA(fast) - EMA(slow)
+  // emaSlow starts at index 0 but maps to price index (slow-1)
+  // emaFast starts at index 0 but maps to price index (fast-1)
+  const offset = slow - fast;
+  const macdLine = [];
+  for (let i = 0; i < emaSlow.length; i++) {
+    macdLine.push(emaFast[i + offset] - emaSlow[i]);
+  }
+
+  // Signal Line: EMA(9) of MACD Line
+  const signalLine = calcEMA(macdLine, signal);
+
+  const currentMACD = macdLine[macdLine.length - 1];
+  const currentSignal = signalLine[signalLine.length - 1];
+  const histogram = currentMACD - currentSignal;
+
+  // 크로스 감지 (최근 2봉)
+  const prevMACD = macdLine[macdLine.length - 2];
+  const prevSignalOffset = signalLine.length - 2;
+  const prevSignal = prevSignalOffset >= 0 ? signalLine[prevSignalOffset] : null;
+
+  let cross = null;
+  if (prevSignal !== null) {
+    if (prevMACD < prevSignal && currentMACD > currentSignal) cross = 'golden'; // 골든크로스
+    if (prevMACD > prevSignal && currentMACD < currentSignal) cross = 'dead';   // 데드크로스
+  }
+
+  let label;
+  if (cross === 'golden') label = '골든크로스 (매수 신호)';
+  else if (cross === 'dead') label = '데드크로스 (매도 신호)';
+  else if (histogram > 0) label = '상승 모멘텀';
+  else label = '하락 모멘텀';
+
+  return {
+    macdLine: currentMACD,
+    signalLine: currentSignal,
+    histogram,
+    cross,
+    label,
+  };
+}
+
+// ── 스토캐스틱 (%K, %D) ────────────────────────────
+
+export function calcStochastic(chartData, kPeriod = 14, dPeriod = 3) {
+  if (chartData.length < kPeriod + dPeriod) return null;
+
+  const kValues = [];
+  for (let i = kPeriod - 1; i < chartData.length; i++) {
+    const slice = chartData.slice(i - kPeriod + 1, i + 1);
+    const high = Math.max(...slice.map(d => parsePrice(d.high_pric)));
+    const low = Math.min(...slice.map(d => parsePrice(d.low_pric)));
+    const close = parsePrice(chartData[i].cur_prc);
+    const k = high === low ? 50 : ((close - low) / (high - low)) * 100;
+    kValues.push(k);
+  }
+
+  // %D = %K의 dPeriod 단순이동평균
+  const dValues = [];
+  for (let i = dPeriod - 1; i < kValues.length; i++) {
+    const avg = kValues.slice(i - dPeriod + 1, i + 1).reduce((a, b) => a + b, 0) / dPeriod;
+    dValues.push(avg);
+  }
+
+  const currentK = kValues[kValues.length - 1];
+  const currentD = dValues[dValues.length - 1];
+
+  let signal;
+  if (currentK >= 80 && currentD >= 80) signal = { level: 'overbought', label: `과매수 (%K: ${currentK.toFixed(1)}, %D: ${currentD.toFixed(1)})` };
+  else if (currentK <= 20 && currentD <= 20) signal = { level: 'oversold', label: `과매도 (%K: ${currentK.toFixed(1)}, %D: ${currentD.toFixed(1)})` };
+  else signal = { level: 'neutral', label: `중립 (%K: ${currentK.toFixed(1)}, %D: ${currentD.toFixed(1)})` };
+
+  // %K가 %D를 상향 돌파하면 매수, 하향 돌파하면 매도
+  const prevK = kValues.length >= 2 ? kValues[kValues.length - 2] : null;
+  const prevD = dValues.length >= 2 ? dValues[dValues.length - 2] : null;
+  let cross = null;
+  if (prevK !== null && prevD !== null) {
+    if (prevK < prevD && currentK > currentD) cross = 'golden';
+    if (prevK > prevD && currentK < currentD) cross = 'dead';
+  }
+
+  return { k: currentK, d: currentD, signal, cross };
+}
+
+// ── MA 골든크로스/데드크로스 감지 ────────────────
+
+export function detectMACross(closePrices, shortP = 5, longP = 20, lookback = 5) {
+  if (closePrices.length < longP + lookback) return null;
+
+  const crosses = [];
+  for (let i = closePrices.length - lookback; i < closePrices.length; i++) {
+    const shortMA = closePrices.slice(i - shortP + 1, i + 1).reduce((a, b) => a + b, 0) / shortP;
+    const longMA = closePrices.slice(i - longP + 1, i + 1).reduce((a, b) => a + b, 0) / longP;
+    const prevShortMA = closePrices.slice(i - shortP, i).reduce((a, b) => a + b, 0) / shortP;
+    const prevLongMA = closePrices.slice(i - longP, i).reduce((a, b) => a + b, 0) / longP;
+
+    if (prevShortMA <= prevLongMA && shortMA > longMA) {
+      crosses.push({ type: 'golden', index: i, label: `MA${shortP}/MA${longP} 골든크로스` });
+    } else if (prevShortMA >= prevLongMA && shortMA < longMA) {
+      crosses.push({ type: 'dead', index: i, label: `MA${shortP}/MA${longP} 데드크로스` });
+    }
+  }
+
+  return crosses.length > 0 ? crosses[crosses.length - 1] : null; // 가장 최근
+}
+
+// ── 볼린저 스퀴즈 감지 ─────────────────────────
+
+export function detectBollingerSqueeze(closePrices, period = 20, lookback = 20) {
+  if (closePrices.length < period + lookback) return null;
+
+  const bandwidths = [];
+  for (let i = period; i <= closePrices.length; i++) {
+    const slice = closePrices.slice(i - period, i);
+    const ma = slice.reduce((a, b) => a + b, 0) / period;
+    const stdDev = Math.sqrt(slice.reduce((sum, p) => sum + Math.pow(p - ma, 2), 0) / (period - 1));
+    bandwidths.push((4 * stdDev / ma) * 100); // bandwidth %
+  }
+
+  const recent = bandwidths.slice(-lookback);
+  const currentBW = bandwidths[bandwidths.length - 1];
+  const minBW = Math.min(...recent);
+
+  const isSqueeze = currentBW <= minBW * 1.05; // 최저치 근처
+  const avgBW = recent.reduce((a, b) => a + b, 0) / recent.length;
+
+  return {
+    squeeze: isSqueeze,
+    currentBandwidth: currentBW,
+    avgBandwidth: avgBW,
+    label: isSqueeze ? '볼린저 스퀴즈 (변동성 확대 예상)' : '정상 범위',
+  };
 }
 
 // ── B. 매매 전략 도출 ────────────────────────────────────
@@ -424,7 +598,7 @@ export function findSupportResistance(swingHighs, swingLows, currentPrice) {
 /**
  * 매수/매도 조건 평가
  */
-export function deriveTradingStrategy(trendStructure, ma20, currentPrice, volumeAdv, supportResistance) {
+export function deriveTradingStrategy(trendStructure, ma20, currentPrice, volumeAdv, supportResistance, latestCandle) {
   const buyConditions = [];
   const sellConditions = [];
 
@@ -480,13 +654,14 @@ export function deriveTradingStrategy(trendStructure, ma20, currentPrice, volume
   });
 
   // 매도 조건 3: 음봉 + 거래량 급증
-  const sell3 = volumeAdv.breakoutVolume && trendStructure.direction === '하락';
+  const isBearishCandle = latestCandle && latestCandle.close < latestCandle.open;
+  const sell3 = volumeAdv.breakoutVolume && isBearishCandle;
   sellConditions.push({
-    label: '하락 추세 + 거래량 급증',
+    label: '음봉 + 거래량 급증',
     met: sell3,
     desc: sell3
-      ? '하락 추세에서 거래량이 급증하여 매도 압력이 강합니다.'
-      : '특별한 매도 압력 신호가 없습니다.',
+      ? `최근 봉이 음봉이며 거래량(${volumeAdv.latestVolume.toLocaleString()})이 20일 평균의 1.5배 이상으로 매도 압력이 강합니다.`
+      : '음봉 + 거래량 급증 신호가 없습니다.',
   });
 
   // 종합 판단
@@ -581,17 +756,39 @@ export function analyzeAll(chartData) {
     swingPoints.highs, swingPoints.lows, currentPrice
   );
 
+  // MACD
+  const macd = calcMACD(closePrices);
+
+  // 스토캐스틱
+  const stochastic = calcStochastic(sorted);
+
+  // MA 크로스 이벤트 (5/20)
+  const maCross = detectMACross(closePrices, 5, 20, 5);
+
+  // 볼린저 스퀴즈
+  const bollingerSqueeze = detectBollingerSqueeze(closePrices);
+
   // ── B. 매매 전략 도출 ──
+  const latestItem = sorted[sorted.length - 1];
+  const latestCandle = {
+    open: parsePrice(latestItem.open_pric || latestItem.strt_pric || 0),
+    close: parsePrice(latestItem.cur_prc),
+    high: parsePrice(latestItem.high_pric),
+    low: parsePrice(latestItem.low_pric),
+  };
   const strategy = deriveTradingStrategy(
-    trendStructure, ma.ma20, currentPrice, volumeAdvanced, supportResistance
+    trendStructure, ma.ma20, currentPrice, volumeAdvanced, supportResistance, latestCandle
   );
 
   return {
     summary,
     ma: { values: ma, trend: maTrend },
     rsi: { value: rsi, signal: rsiSignal },
-    bollinger: { bands: bollinger, signal: bollingerSignal },
+    bollinger: { bands: bollinger, signal: bollingerSignal, squeeze: bollingerSqueeze },
     ichimoku: { values: ichimoku, signal: ichimokuSignal },
+    macd,
+    stochastic,
+    maCross,
     volume: {
       avg5: avgVolume5,
       avg20: avgVolume20,

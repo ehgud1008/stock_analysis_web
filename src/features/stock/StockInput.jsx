@@ -2,12 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import './StockInput.css';
 
 const CHART_TYPES = [
-  { value: 'tick', label: '틱' },
-  { value: 'minute', label: '분' },
-  { value: 'day', label: '일' },
-  { value: 'week', label: '주' },
-  { value: 'month', label: '월' },
-  { value: 'year', label: '년' },
+  // { value: 'tick', label: '틱' },
+  { value: 'minute', label: '분봉' },
+  { value: 'day', label: '일봉' },
+  { value: 'week', label: '주봉' },
+  // { value: 'month', label: '월' },
+  // { value: 'year', label: '년' },
 ];
 
 /**
@@ -38,6 +38,7 @@ export default function StockInput({
   chartType,
   baseDate,
   onStockCodeChange,
+  onStockNameChange,
   onChartTypeChange,
   onBaseDateChange,
   onSubmit,
@@ -94,10 +95,11 @@ export default function StockInput({
   const selectStock = useCallback(
     (stock) => {
       onStockCodeChange(stock.code);
+      if (onStockNameChange) onStockNameChange(stock.name);
       setQuery(`${stock.code} ${stock.name}`);
       setShowDropdown(false);
     },
-    [onStockCodeChange]
+    [onStockCodeChange, onStockNameChange]
   );
 
   const handleInputChange = (e) => {

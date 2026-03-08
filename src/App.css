@@ -149,6 +149,42 @@
   gap: 16px;
 }
 
+/* Sub-tab Navigation */
+.app__sub-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.app__sub-tab {
+  padding: 10px 20px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.app__sub-tab:hover {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.app__sub-tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.app__sub-tab--active:hover {
+  color: var(--accent);
+}
+
 /* Error */
 .app__error {
   padding: 14px 18px;

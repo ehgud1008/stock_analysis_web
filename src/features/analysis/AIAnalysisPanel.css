@@ -108,6 +108,73 @@
   }
 }
 
+/* ── Multi-Timeframe Toggle ──────────────────────────── */
+.ai-multi-tf {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.ai-multi-tf__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.ai-multi-tf__toggle input {
+  display: none;
+}
+
+.ai-multi-tf__check {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 2px solid var(--border);
+  position: relative;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+
+.ai-multi-tf__toggle input:checked ~ .ai-multi-tf__check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.ai-multi-tf__toggle input:checked ~ .ai-multi-tf__check::after {
+  content: '✓';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.ai-multi-tf__toggle input:checked ~ .ai-multi-tf__label {
+  color: var(--text-primary);
+}
+
+.ai-multi-tf__desc {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.08);
+  padding: 3px 10px;
+  border-radius: 6px;
+  animation: fadeSlideDown 0.2s ease-out;
+}
+
 .ai-analysis-panel__btn {
   margin-left: auto;
   display: inline-flex;

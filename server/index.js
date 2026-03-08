@@ -93,6 +93,52 @@ app.delete('/api/history', async (req, res) => {
   }
 });
 
+// ── 비교 분석 기록 (/api/compare) ─────────────────────────
+const COMPARE_COLLECTION = 'compare_history';
+function getCompareCollection() {
+  return db.collection(COMPARE_COLLECTION);
+}
+
+// 전체 조회 (최신순)
+app.get('/api/compare', async (req, res) => {
+  try {
+    const records = await getCompareCollection()
+      .find({})
+      .sort({ analyzedAt: -1 })
+      .limit(100)
+      .toArray();
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 저장
+app.post('/api/compare', async (req, res) => {
+  try {
+    const entry = {
+      ...req.body,
+      analyzedAt: new Date().toISOString(),
+    };
+    const result = await getCompareCollection().insertOne(entry);
+    res.status(201).json({ ...entry, _id: result.insertedId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 단건 삭제
+app.delete('/api/compare/:id', async (req, res) => {
+  try {
+    await getCompareCollection().deleteOne({
+      _id: new ObjectId(req.params.id),
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── 서버 시작 ────────────────────────────────────────────
 connectDB().then(() => {
   app.listen(PORT, () => {

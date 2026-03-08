@@ -125,6 +125,14 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
+.detail-row__value--green {
+  color: var(--green);
+}
+
+.detail-row__value--red {
+  color: var(--red);
+}
+
 /* Stat Grid */
 .analysis-card__grid {
   display: grid;
