@@ -37,10 +37,12 @@ export default function StockInput({
   stockCode,
   chartType,
   baseDate,
+  includeNews,
   onStockCodeChange,
   onStockNameChange,
   onChartTypeChange,
   onBaseDateChange,
+  onIncludeNewsChange,
   onSubmit,
   isDisabled,
   isLoading,
@@ -233,6 +235,19 @@ export default function StockInput({
             value={baseDate}
             onChange={(e) => onBaseDateChange(e.target.value)}
           />
+        </div>
+
+        <div className="stock-input__field">
+          <label className="stock-input__label">뉴스</label>
+          <label className="stock-input__news-label">
+            <input
+              type="checkbox"
+              checked={!!includeNews}
+              onChange={(e) => onIncludeNewsChange(e.target.checked)}
+            />
+            <span className="stock-input__news-check" />
+            <span>📰 뉴스 포함</span>
+          </label>
         </div>
 
         <button

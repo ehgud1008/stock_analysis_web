@@ -11,7 +11,7 @@ const API_JSON_URL = '/api/json';
 
 /**
  * 토큰 조회
- * POST http://localhost:8080/api/auth
+ * POST http://140.238.15.94:8080/api/auth
  */
 export async function fetchToken() {
   try {

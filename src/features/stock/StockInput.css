@@ -72,6 +72,65 @@
   border-color: var(--accent);
 }
 
+/* ── News Toggle ──────────────────────────────────────── */
+
+.stock-input__news-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.stock-input__news-label:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--surface-3);
+}
+
+.stock-input__news-label input[type="checkbox"] {
+  display: none;
+}
+
+.stock-input__news-check {
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.stock-input__news-label input[type="checkbox"]:checked ~ .stock-input__news-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.stock-input__news-label input[type="checkbox"]:checked ~ .stock-input__news-check::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.stock-input__news-label input[type="checkbox"]:checked ~ span:last-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .stock-input__submit {
   grid-column: 1 / -1;
   margin-top: 4px;

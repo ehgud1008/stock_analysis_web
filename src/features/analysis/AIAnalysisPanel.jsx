@@ -213,7 +213,7 @@ function buildSecondaryAnalysisText(secondaryAnalysis, timeframeLabel) {
 }
 
 // ── 메인 컴포넌트 ────────────────────────────────────────
-export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, stockCode }) {
+export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, stockCode, includeNews }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -262,6 +262,19 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
         }
       }
 
+      // 시황/뉴스 분석 추가
+      if (includeNews) {
+        const newsStockName = stockName || stockCode;
+        prompt += '\n\n## 시황 및 뉴스 분석 요청\n';
+        prompt += `아래 항목에 대해 최신 정보를 기반으로 추가 분석해 주세요:\n`;
+        prompt += `1. **${newsStockName} 관련 최근 뉴스/이슈**: 최근 주요 뉴스, 실적 발표, 공시, 업종 이슈 등\n`;
+        prompt += `2. **시장 전반 시황**: KOSPI/KOSDAQ 전반적 흐름, 외국인/기관 수급 동향, 글로벌 증시 영향\n`;
+        prompt += `3. **업종/테마 동향**: 해당 종목이 속한 업종이나 테마의 최근 흐름\n`;
+        prompt += `4. **뉴스 감성 분석**: 긍정/부정/중립 뉴스 비중과 투자심리에 미치는 영향\n`;
+        prompt += `\n> 위 시황/뉴스 정보를 C~F 분석에 반영하여 최종 판단의 정확도를 높여 주세요.\n`;
+        prompt += `> 뉴스 기반으로 파악한 리스크 요인이 있다면 반드시 명시해 주세요.\n`;
+      }
+
       const raw = await requestAIAnalysis(prompt);
       const parsed = JSON.parse(raw);
       setResult(parsed);
@@ -292,7 +305,7 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
     } finally {
       setLoading(false);
     }
-  }, [analysis, positionType, holdingShares, holdingAvgPrice, multiTimeframe, token, stockCode, altChartType, baseDate, stockName, currentChartType]);
+  }, [analysis, positionType, holdingShares, holdingAvgPrice, multiTimeframe, includeNews, token, stockCode, altChartType, baseDate, stockName, currentChartType]);
 
   if (!analysis?.structure || !analysis?.strategy) return null;
 

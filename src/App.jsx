@@ -18,6 +18,7 @@ function App() {
     setStockName,
     setChartType,
     setBaseDate,
+    setIncludeNews,
     handleFetchAndAnalyze,
   } = useAnalysis();
 
@@ -99,10 +100,12 @@ function App() {
                   stockCode={state.stockCode}
                   chartType={state.chartType}
                   baseDate={state.baseDate}
+                  includeNews={state.includeNews}
                   onStockCodeChange={setStockCode}
                   onStockNameChange={setStockName}
                   onChartTypeChange={setChartType}
                   onBaseDateChange={setBaseDate}
+                  onIncludeNewsChange={setIncludeNews}
                   onSubmit={handleFetchAndAnalyze}
                   isDisabled={!state.token}
                   isLoading={isFetching}
@@ -130,6 +133,7 @@ function App() {
                       baseDate={state.baseDate}
                       token={state.token}
                       stockCode={state.stockCode}
+                      includeNews={state.includeNews}
                     />
                   </>
                 )}

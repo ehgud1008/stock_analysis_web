@@ -19,6 +19,7 @@ const INITIAL_STATE = {
   stockName: '',
   chartType: 'day',
   baseDate: '',
+  includeNews: false,
 
   // 데이터
   chartData: null,
@@ -67,6 +68,10 @@ export function useAnalysis() {
   );
   const setBaseDate = useCallback(
     (baseDate) => updateState({ baseDate }),
+    [updateState]
+  );
+  const setIncludeNews = useCallback(
+    (includeNews) => updateState({ includeNews }),
     [updateState]
   );
 
@@ -118,6 +123,7 @@ export function useAnalysis() {
     setStockName,
     setChartType,
     setBaseDate,
+    setIncludeNews,
     handleFetchAndAnalyze,
     reset,
   };
