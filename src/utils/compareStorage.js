@@ -6,7 +6,7 @@
 const BASE = '/api/compare';
 
 /** 비교 분석 결과 저장 */
-export async function saveCompare(record) {
+export async function saveCompare(record)  {
   const res = await fetch(BASE, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
