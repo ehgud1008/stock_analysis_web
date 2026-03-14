@@ -159,7 +159,7 @@ function getStatusLabel(status) {
   const map = {
     idle: '대기 중',
     loading_token: '토큰 조회 중',
-    loaded_token: '토큰 준비됨',
+    loaded_token: '토큰 준비됨22',
     fetching_data: '데이터 조회 중',
     analyzing: '분석 중',
     done: '완료',
