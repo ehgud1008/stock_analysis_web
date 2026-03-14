@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/auth",
+      "destination": "http://140.238.15.94:8080/api/auth"
+    },
+    {
+      "source": "/api/json",
+      "destination": "http://140.238.15.94:8080/api/json"
+    }
+  ]
+}
