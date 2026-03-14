@@ -104,163 +104,48 @@ export async function fetchChartData(token, stockCode, chartType, baseDate) {
 }
 
 /**
- * prompt.md 로드 및 캐싱
- */
-let cachedPromptMd = null;
-
-async function loadPromptMd() {
-  if (cachedPromptMd) return cachedPromptMd;
-  const res = await fetch('/prompt.md');
-  if (!res.ok) throw new Error('prompt.md 로드 실패');
-  cachedPromptMd = await res.text();
-  return cachedPromptMd;
-}
-
-/**
- * prompt.md에서 시스템 지시문과 분석 지시사항을 분리
- * "## 시스템 설정" ~ "---" = systemInstruction
- * "## 분석 지시사항" 이후 전체 = analysisInstructions (프롬프트에 이어붙임)
- */
-function parsePromptMd(md) {
-  const sysMatch = md.match(/## 시스템 설정\s*\n([\s\S]*?)(?=\n---)/);
-  const systemInstruction = sysMatch ? sysMatch[1].trim() : '';
-
-  const instrIdx = md.indexOf('## 분석 지시사항');
-  const analysisInstructions = instrIdx >= 0 ? md.slice(instrIdx).trim() : '';
-
-  return { systemInstruction, analysisInstructions };
-}
-
-/**
- * prompt_compare.md 로드 및 캐싱
- */
-let cachedComparePromptMd = null;
-
-async function loadComparePromptMd() {
-  if (cachedComparePromptMd) return cachedComparePromptMd;
-  const res = await fetch('/prompt_compare.md');
-  if (!res.ok) throw new Error('prompt_compare.md 로드 실패');
-  cachedComparePromptMd = await res.text();
-  return cachedComparePromptMd;
-}
-
-function parseComparePromptMd(md) {
-  const sysMatch = md.match(/## 시스템 설정\s*\n([\s\S]*?)(?=\n────)/);
-  const systemInstruction = sysMatch ? sysMatch[1].trim() : '';
-
-  const instrIdx = md.indexOf('## 비교 분석 지시사항');
-  const compareInstructions = instrIdx >= 0 ? md.slice(instrIdx).trim() : '';
-
-  return { systemInstruction, compareInstructions };
-}
-
-/**
- * 비교 분석 AI 호출
+ * 비교 분석 AI 호출 (서버사이드 Serverless Function 경유)
  * @param {string} stocksJson - 비교 대상 종목 데이터 JSON 문자열
  */
 export async function requestCompareAnalysis(stocksJson) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('Gemini API Key가 설정되지 않았습니다.');
-  }
-
-  const md = await loadComparePromptMd();
-  const { systemInstruction, compareInstructions } = parseComparePromptMd(md);
-
-  const fullUserPrompt = stocksJson + '\n\n' + compareInstructions;
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemInstruction }],
-          },
-          contents: [
-            {
-              parts: [{ text: fullUserPrompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4000,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
+    const response = await fetch('/api/ai/compare', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stocksJson }),
+    });
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `API 오류: ${response.status}`);
+      throw new Error(errData.error || `API 오류: ${response.status}`);
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');
-    }
-    return text;
+    return data.text;
   } catch (err) {
     throw new Error(`비교 분석 요청 실패: ${err.message}`);
   }
 }
 
 /**
- * Gemini API 호출 (API 키는 .env에서 로드)
- * @param {string} prompt     - 차트 데이터 + 분석 프롬프트
+ * Gemini AI 분석 호출 (서버사이드 Serverless Function 경유)
+ * @param {string} prompt - 차트 데이터 + 분석 프롬프트
  */
 export async function requestAIAnalysis(prompt) {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim() === '') {
-    throw new Error('Gemini API Key가 설정되지 않았습니다. API_KEY를 확인하세요.');
-  }
-
-  // prompt.md 로드 및 파싱
-  const md = await loadPromptMd();
-  const { systemInstruction, analysisInstructions } = parsePromptMd(md);
-
-  // 차트 데이터(prompt) + 분석 지시사항을 합친 최종 사용자 프롬프트
-  const fullUserPrompt = prompt + '\n\n' + analysisInstructions;
-
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: systemInstruction }],
-          },
-          contents: [
-            {
-              parts: [{ text: fullUserPrompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 4000,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
+    const response = await fetch('/api/ai/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt }),
+    });
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `API 오류: ${response.status}`);
+      throw new Error(errData.error || `API 오류: ${response.status}`);
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) {
-      throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');
-    }
-    return text;
+    return data.text;
   } catch (err) {
     throw new Error(`AI 분석 요청 실패: ${err.message}`);
   }
