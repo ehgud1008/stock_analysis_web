@@ -29,8 +29,3 @@ npm-debug.log*
 coverage/
 
 # Prompt / Mock files
-prompt.md
-mock_chart.md
-mock_response.md
-public/prompt.md
-public/prompt_compare.md
