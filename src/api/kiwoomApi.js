@@ -18,6 +18,7 @@ export async function fetchToken() {
     const response = await fetch(API_AUTH_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      redirect: 'manual',
       body: JSON.stringify({
         header: {
           'api-id': 'au10001',
@@ -33,17 +34,19 @@ export async function fetchToken() {
       }),
     });
 
+    if (response.status === 302 || response.type === 'opaqueredirect') {
+      return { success: false, error: '키움증권 서버가 점검 중입니다. 잠시 후 다시 시도해주세요.' };
+    }
+
     if (!response.ok) {
-      throw new Error(`토큰 발급 실패: ${response.status}`);
+      return { success: false, error: '키움증권 서버가 점검 중입니다. 잠시 후 다시 시도해주세요.' };
     }
 
     const data = await response.json();
     const token = data.token || data.access_token || data.authorization || JSON.stringify(data);
     return { success: true, token };
   } catch (err) {
-    console.warn('백엔드 연결 실패, mock 토큰 사용:', err.message);
-    await delay(500);
-    return { success: true, token: '' };
+    return { success: false, error: '키움증권 서버가 점검 중입니다. 잠시 후 다시 시도해주세요.' };
   }
 }
 
@@ -76,6 +79,7 @@ export async function fetchChartData(token, stockCode, chartType, baseDate) {
     const response = await fetch(API_JSON_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      redirect: 'manual',
       body: JSON.stringify({
         header: {
           'api-id': apiId,
@@ -91,6 +95,10 @@ export async function fetchChartData(token, stockCode, chartType, baseDate) {
       }),
     });
 
+    if (response.status === 302 || response.type === 'opaqueredirect') {
+      throw new Error('키움증권 서버가 점검 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+
     if (!response.ok) {
       throw new Error(`차트 조회 실패: ${response.status}`);
     }
@@ -100,6 +108,48 @@ export async function fetchChartData(token, stockCode, chartType, baseDate) {
   } catch (err) {
     console.error('차트 데이터 조회 실패:', err.message);
     throw new Error(`데이터 조회 실패: ${err.message}`);
+  }
+}
+
+/**
+ * 종목 기본 정보 조회
+ * POST /api/json (api-id: ka10001)
+ * @param {string} token     - 인증 토큰
+ * @param {string} stockCode - 종목코드 (e.g. "005930")
+ */
+export async function fetchStockInfo(token, stockCode) {
+  try {
+    const response = await fetch(API_JSON_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      redirect: 'manual',
+      body: JSON.stringify({
+        header: {
+          'api-id': 'ka10001',
+          authorization: token,
+          'cont-yn': 'N',
+          'next-key': '',
+        },
+        body: {
+          // stk_cd: stockCode,
+          stk_cd: 'KS11',
+        },
+      }),
+    });
+
+    if (response.status === 302 || response.type === 'opaqueredirect') {
+      throw new Error('키움증권 서버가 점검 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+
+    if (!response.ok) {
+      throw new Error(`종목 정보 조회 실패: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error('종목 정보 조회 실패:', err.message);
+    throw new Error(`종목 정보 조회 실패: ${err.message}`);
   }
 }
 

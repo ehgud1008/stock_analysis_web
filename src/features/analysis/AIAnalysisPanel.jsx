@@ -29,81 +29,114 @@ function Tip({ text }) {
 /**
  * CDE 분석용 프롬프트 생성
  */
-function buildCDEPrompt(analysis, positionInfo) {
+function buildCDEPrompt(analysis, positionInfo, stockInfo) {
   const { summary, ma, rsi, bollinger, ichimoku, macd, stochastic, maCross, volume, structure, strategy } = analysis;
   const { trendStructure, atr, volumeAdvanced, supportResistance } = structure;
 
   const lines = [];
   lines.push(`## 종목 기본 정보`);
-  lines.push(`- 종목코드: ${summary.stockCode}`);
-  lines.push(`- 현재가: ${summary.currentPrice.toLocaleString()}원`);
-  lines.push(`- 기간 최고가: ${summary.highestPrice.toLocaleString()}원`);
-  lines.push(`- 기간 최저가: ${summary.lowestPrice.toLocaleString()}원`);
-  lines.push(`- 데이터 수: ${summary.dataCount}개`);
+  lines.push(`# 종목코드: ${summary.stockCode}`);
+  lines.push(`# 현재가: ${summary.currentPrice.toLocaleString()}원`);
+  lines.push(`# 기간 최고가: ${summary.highestPrice.toLocaleString()}원`);
+  lines.push(`# 기간 최저가: ${summary.lowestPrice.toLocaleString()}원`);
+  // lines.push(`# 데이터 수: ${summary.dataCount}개`);
   lines.push('');
+
+  // 종목 펀더멘탈 정보 (ka10001)
+  if (stockInfo) {
+    lines.push(`## 종목 펀더멘탈 정보`);
+    if (stockInfo.stk_nm) lines.push(`# 종목명: ${stockInfo.stk_nm}`);
+    // if (stockInfo.setl_mm) lines.push(`# 결산월: ${stockInfo.setl_mm}월`);
+    if (stockInfo.mac) lines.push(`# 시가총액: ${Number(stockInfo.mac).toLocaleString()}억원`);
+    if (stockInfo.mac_wght) lines.push(`# 시가총액비중: ${stockInfo.mac_wght}%`);
+    if (stockInfo.per) lines.push(`# PER: ${stockInfo.per}`);
+    if (stockInfo.eps) lines.push(`# EPS: ${Number(stockInfo.eps).toLocaleString()}원`);
+    if (stockInfo.pbr) lines.push(`# PBR: ${stockInfo.pbr}`);
+    if (stockInfo.bps) lines.push(`# BPS: ${Number(stockInfo.bps).toLocaleString()}원`);
+    if (stockInfo.roe) lines.push(`# ROE: ${stockInfo.roe}%`);
+    if (stockInfo.ev) lines.push(`# EV: ${stockInfo.ev}`);
+    if (stockInfo.sale_amt) lines.push(`# 매출액: ${Number(stockInfo.sale_amt).toLocaleString()}억원`);
+    if (stockInfo.bus_pro) lines.push(`# 영업이익: ${Number(stockInfo.bus_pro).toLocaleString()}억원`);
+    if (stockInfo.cup_nga) lines.push(`# 당기순이익: ${Number(stockInfo.cup_nga).toLocaleString()}억원`);
+    if (stockInfo.cap) lines.push(`# 자본금: ${Number(stockInfo.cap).toLocaleString()}억원`);
+    if (stockInfo.flo_stk) lines.push(`# 상장주식: ${Number(stockInfo.flo_stk).toLocaleString()}주`);
+    if (stockInfo.dstr_stk) lines.push(`# 유통주식: ${Number(stockInfo.dstr_stk).toLocaleString()}주`);
+    if (stockInfo.dstr_rt) lines.push(`# 유통비율: ${stockInfo.dstr_rt}%`);
+    if (stockInfo.crd_rt) lines.push(`# 신용비율: ${stockInfo.crd_rt}%`);
+    if (stockInfo.for_exh_rt) lines.push(`# 외인소진률: ${stockInfo.for_exh_rt}%`);
+    // if (stockInfo.fav) lines.push(`# 액면가: ${Number(stockInfo.fav).toLocaleString()}원`);
+    // if (stockInfo.oyr_hgst) lines.push(`# 연중최고: ${Number(stockInfo.oyr_hgst).toLocaleString()}원`);
+    // if (stockInfo.oyr_lwst) lines.push(`# 연중최저: ${Number(stockInfo.oyr_lwst).toLocaleString()}원`);
+    // if (stockInfo['250hgst']) lines.push(`# 250일최고: ${Number(stockInfo['250hgst']).toLocaleString()}원 (${stockInfo['250hgst_pric_dt'] || ''}, 대비 ${stockInfo['250hgst_pric_pre_rt'] || ''}%)`);
+    // if (stockInfo['250lwst']) lines.push(`# 250일최저: ${Number(stockInfo['250lwst']).toLocaleString()}원 (${stockInfo['250lwst_pric_dt'] || ''}, 대비 ${stockInfo['250lwst_pric_pre_rt'] || ''}%)`);
+    // if (stockInfo.cur_prc) lines.push(`# 현재가(실시간): ${Number(stockInfo.cur_prc).toLocaleString()}원`);
+    if (stockInfo.flu_rt) lines.push(`# 등락율: ${stockInfo.flu_rt}%`);
+    if (stockInfo.trde_qty) lines.push(`# 거래량: ${Number(stockInfo.trde_qty).toLocaleString()}`);
+    lines.push('');
+  }
 
   // 포지션 정보
   if (positionInfo.type === 'holding') {
     lines.push(`## 보유 포지션 정보`);
-    lines.push(`- 포지션 유형: 보유종목 (기존 매수 상태)`);
-    lines.push(`- 보유 주식수: ${Number(positionInfo.shares).toLocaleString()}주`);
-    lines.push(`- 평균 매수가: ${Number(positionInfo.avgPrice).toLocaleString()}원`);
+    lines.push(`# 포지션 유형: 보유종목 (기존 매수 상태)`);
+    lines.push(`# 보유 주식수: ${Number(positionInfo.shares).toLocaleString()}주`);
+    lines.push(`# 평균 매수가: ${Number(positionInfo.avgPrice).toLocaleString()}원`);
     const pnlPct = ((summary.currentPrice - positionInfo.avgPrice) / positionInfo.avgPrice * 100).toFixed(2);
-    lines.push(`- 현재 수익률: ${pnlPct}%`);
-    lines.push(`- 평가 손익: ${((summary.currentPrice - positionInfo.avgPrice) * positionInfo.shares).toLocaleString()}원`);
+    lines.push(`# 현재 수익률: ${pnlPct}%`);
+    lines.push(`# 평가 손익: ${((summary.currentPrice - positionInfo.avgPrice) * positionInfo.shares).toLocaleString()}원`);
     lines.push('');
     lines.push(`> 이 투자자는 이미 해당 종목을 보유하고 있습니다.`);
     lines.push(`> 추가매수, 보유유지, 부분매도, 전량매도 중 가장 적절한 전략을 판단해 주세요.`);
     lines.push('');
   } else {
     lines.push(`## 포지션 정보`);
-    lines.push(`- 포지션 유형: 신규매수 검토`);
+    lines.push(`# 포지션 유형: 신규매수 검토`);
     lines.push(`> 이 투자자는 아직 해당 종목을 보유하지 않고 있으며, 신규 진입을 검토 중입니다.`);
     lines.push('');
   }
 
   lines.push(`## A. 기술적 구조 분석 결과`);
   lines.push(`### 추세 구조`);
-  lines.push(`- 패턴: ${trendStructure.pattern} (${trendStructure.direction})`);
-  lines.push(`- 추세 강도: ${trendStructure.strength}`);
-  trendStructure.details.forEach(d => lines.push(`- ${d}`));
+  lines.push(`# 패턴: ${trendStructure.pattern} (${trendStructure.direction})`);
+  lines.push(`# 추세 강도: ${trendStructure.strength}`);
+  trendStructure.details.forEach(d => lines.push(`# ${d}`));
   lines.push('');
 
   lines.push(`### 지지/저항`);
   if (supportResistance.nearestResistance) {
-    lines.push(`- 최근접 저항: ${supportResistance.nearestResistance.price.toLocaleString()}원`);
+    lines.push(`# 최근접 저항: ${supportResistance.nearestResistance.price.toLocaleString()}원`);
   }
   if (supportResistance.nearestSupport) {
-    lines.push(`- 최근접 지지: ${supportResistance.nearestSupport.price.toLocaleString()}원`);
+    lines.push(`# 최근접 지지: ${supportResistance.nearestSupport.price.toLocaleString()}원`);
   }
   if (supportResistance.recentBreakout) {
-    lines.push(`- 최근 돌파: ${supportResistance.recentBreakout.type} (${supportResistance.recentBreakout.level.toLocaleString()}원)`);
+    lines.push(`# 최근 돌파: ${supportResistance.recentBreakout.type} (${supportResistance.recentBreakout.level.toLocaleString()}원)`);
   }
   if (supportResistance.recentBreakdown) {
-    lines.push(`- ⚠️ 지지 이탈: ${supportResistance.recentBreakdown.level.toLocaleString()}원 하회`);
+    lines.push(`# ⚠️ 지지 이탈: ${supportResistance.recentBreakdown.level.toLocaleString()}원 하회`);
   }
   lines.push('');
 
   if (atr) {
     lines.push(`### 변동성`);
-    lines.push(`- ATR(14): ${Math.round(atr.atr).toLocaleString()}원 (현재가 대비 ${((atr.atr / summary.currentPrice) * 100).toFixed(2)}%)`);
-    lines.push(`- 3봉 변동성 급증: ${atr.volatilitySpike ? '예' : '아니오'}`);
+    lines.push(`# ATR(14): ${Math.round(atr.atr).toLocaleString()}원 (현재가 대비 ${((atr.atr / summary.currentPrice) * 100).toFixed(2)}%)`);
+    lines.push(`# 3봉 변동성 급증: ${atr.volatilitySpike ? '예' : '아니오'}`);
     lines.push('');
   }
 
   lines.push(`### 거래량`);
-  lines.push(`- 5일/20일 평균 증감률: ${volumeAdvanced.changeRate.toFixed(1)}%`);
-  lines.push(`- 거래량 동반 돌파: ${volumeAdvanced.breakoutVolume ? '예' : '아니오'}`);
-  lines.push(`- 거래량 감소 추세: ${volumeAdvanced.decreasingTrend ? '예' : '아니오'}`);
+  lines.push(`# 5일/20일 평균 증감률: ${volumeAdvanced.changeRate.toFixed(1)}%`);
+  lines.push(`# 거래량 동반 돌파: ${volumeAdvanced.breakoutVolume ? '예' : '아니오'}`);
+  lines.push(`# 거래량 감소 추세: ${volumeAdvanced.decreasingTrend ? '예' : '아니오'}`);
   lines.push('');
 
   lines.push(`### 이동평균선`);
-  lines.push(`- MA배열: ${ma.trend.label}`);
+  lines.push(`# MA배열: ${ma.trend.label}`);
   Object.entries(ma.values).forEach(([key, val]) => {
-    if (val !== null) lines.push(`- ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
+    if (val !== null) lines.push(`# ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
   });
   if (maCross) {
-    lines.push(`- ⚡ 최근 크로스: ${maCross.label}`);
+    lines.push(`# ⚡ 최근 크로스: ${maCross.label}`);
   }
   lines.push('');
 
@@ -112,47 +145,47 @@ function buildCDEPrompt(analysis, positionInfo) {
   if (bollinger.bands) {
     lines.push(`### 볼린저: ${bollinger.signal.label} (상단 ${Math.round(bollinger.bands.upper).toLocaleString()}, 하단 ${Math.round(bollinger.bands.lower).toLocaleString()})`);
     if (bollinger.squeeze) {
-      lines.push(`- 스퀴즈 상태: ${bollinger.squeeze.label}`);
+      lines.push(`# 스퀴즈 상태: ${bollinger.squeeze.label}`);
     }
   }
 
   if (macd) {
     lines.push(`### MACD: ${macd.label}`);
-    lines.push(`- MACD Line: ${macd.macdLine.toFixed(2)}`);
-    lines.push(`- Signal Line: ${macd.signalLine.toFixed(2)}`);
-    lines.push(`- 히스토그램: ${macd.histogram.toFixed(2)}`);
+    lines.push(`# MACD Line: ${macd.macdLine.toFixed(2)}`);
+    lines.push(`# Signal Line: ${macd.signalLine.toFixed(2)}`);
+    lines.push(`# 히스토그램: ${macd.histogram.toFixed(2)}`);
     if (macd.cross) {
-      lines.push(`- ⚡ ${macd.cross === 'golden' ? '골든크로스 발생!' : '데드크로스 발생!'}`);
+      lines.push(`# ⚡ ${macd.cross === 'golden' ? '골든크로스 발생!' : '데드크로스 발생!'}`);
     }
   }
 
   if (stochastic) {
     lines.push(`### 스토캐스틱: ${stochastic.signal.label}`);
     if (stochastic.cross) {
-      lines.push(`- ⚡ ${stochastic.cross === 'golden' ? '%K/%D 골든크로스' : '%K/%D 데드크로스'}`);
+      lines.push(`# ⚡ ${stochastic.cross === 'golden' ? '%K/%D 골든크로스' : '%K/%D 데드크로스'}`);
     }
   }
 
   if (ichimoku) {
     lines.push(`### 일목균형표: ${ichimoku.signal.label}`);
     if (ichimoku.values) {
-      lines.push(`- 전환선(9): ${Math.round(ichimoku.values.tenkanSen).toLocaleString()}원`);
-      lines.push(`- 기준선(26): ${Math.round(ichimoku.values.kijunSen).toLocaleString()}원`);
-      lines.push(`- 구름 상단: ${Math.round(ichimoku.values.cloudTop).toLocaleString()}원`);
-      lines.push(`- 구름 하단: ${Math.round(ichimoku.values.cloudBottom).toLocaleString()}원`);
+      lines.push(`# 전환선(9): ${Math.round(ichimoku.values.tenkanSen).toLocaleString()}원`);
+      lines.push(`# 기준선(26): ${Math.round(ichimoku.values.kijunSen).toLocaleString()}원`);
+      lines.push(`# 구름 상단: ${Math.round(ichimoku.values.cloudTop).toLocaleString()}원`);
+      lines.push(`# 구름 하단: ${Math.round(ichimoku.values.cloudBottom).toLocaleString()}원`);
     }
     if (ichimoku.signal.details?.length) {
-      ichimoku.signal.details.forEach(d => lines.push(`- ${d}`));
+      ichimoku.signal.details.forEach(d => lines.push(`# ${d}`));
     }
   }
   lines.push('');
 
   lines.push(`## B. 매매 전략 도출 결과`);
-  lines.push(`- 종합 판단: ${strategy.overallLabel}`);
-  lines.push(`- 매수 조건 충족: ${strategy.buyScore}/3`);
-  strategy.buyConditions.forEach(c => lines.push(`  - ${c.met ? '✅' : '❌'} ${c.label}: ${c.desc}`));
-  lines.push(`- 매도 조건 충족: ${strategy.sellScore}/3`);
-  strategy.sellConditions.forEach(c => lines.push(`  - ${c.met ? '🔴' : '⚪'} ${c.label}: ${c.desc}`));
+  lines.push(`# 종합 판단: ${strategy.overallLabel}`);
+  lines.push(`# 매수 조건 충족: ${strategy.buyScore}/3`);
+  strategy.buyConditions.forEach(c => lines.push(`  # ${c.met ? '✅' : '❌'} ${c.label}: ${c.desc}`));
+  lines.push(`# 매도 조건 충족: ${strategy.sellScore}/3`);
+  strategy.sellConditions.forEach(c => lines.push(`  # ${c.met ? '🔴' : '⚪'} ${c.label}: ${c.desc}`));
   lines.push('');
 
   return lines.join('\n');
@@ -168,22 +201,22 @@ function buildSecondaryAnalysisText(secondaryAnalysis, timeframeLabel) {
   const lines = [];
 
   lines.push(`## ${timeframeLabel} 기술적 분석 결과 (추가 타임프레임)`);
-  lines.push(`- 데이터 수: ${summary.dataCount}개`);
-  lines.push(`- 현재가: ${summary.currentPrice.toLocaleString()}원`);
-  lines.push(`- 기간 최고: ${summary.highestPrice.toLocaleString()}원 / 최저: ${summary.lowestPrice.toLocaleString()}원`);
+  lines.push(`# 데이터 수: ${summary.dataCount}개`);
+  lines.push(`# 현재가: ${summary.currentPrice.toLocaleString()}원`);
+  lines.push(`# 기간 최고: ${summary.highestPrice.toLocaleString()}원 / 최저: ${summary.lowestPrice.toLocaleString()}원`);
   lines.push('');
 
   lines.push(`### 추세 구조`);
-  lines.push(`- 패턴: ${trendStructure.pattern} (${trendStructure.direction})`);
-  lines.push(`- 추세 강도: ${trendStructure.strength}`);
-  trendStructure.details.forEach(d => lines.push(`- ${d}`));
+  lines.push(`# 패턴: ${trendStructure.pattern} (${trendStructure.direction})`);
+  lines.push(`# 추세 강도: ${trendStructure.strength}`);
+  trendStructure.details.forEach(d => lines.push(`# ${d}`));
   lines.push('');
 
   lines.push(`### 이동평균선: ${ma.trend.label}`);
   Object.entries(ma.values).forEach(([key, val]) => {
-    if (val !== null) lines.push(`- ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
+    if (val !== null) lines.push(`# ${key.toUpperCase()}: ${Math.round(val).toLocaleString()}원`);
   });
-  if (maCross) lines.push(`- ⚡ 최근 크로스: ${maCross.label}`);
+  if (maCross) lines.push(`# ⚡ 최근 크로스: ${maCross.label}`);
   lines.push('');
 
   lines.push(`### RSI: ${rsi.signal.label}`);
@@ -192,28 +225,28 @@ function buildSecondaryAnalysisText(secondaryAnalysis, timeframeLabel) {
   }
   if (macd) {
     lines.push(`### MACD: ${macd.label}`);
-    if (macd.cross) lines.push(`- ⚡ ${macd.cross === 'golden' ? '골든크로스!' : '데드크로스!'}`);
+    if (macd.cross) lines.push(`# ⚡ ${macd.cross === 'golden' ? '골든크로스!' : '데드크로스!'}`);
   }
   if (stochastic) {
     lines.push(`### 스토캐스틱: ${stochastic.signal.label}`);
-    if (stochastic.cross) lines.push(`- ⚡ ${stochastic.cross === 'golden' ? '골든크로스' : '데드크로스'}`);
+    if (stochastic.cross) lines.push(`# ⚡ ${stochastic.cross === 'golden' ? '골든크로스' : '데드크로스'}`);
   }
   lines.push('');
 
   lines.push(`### 거래량`);
-  lines.push(`- 5일/20일 평균 증감률: ${volumeAdvanced.changeRate.toFixed(1)}%`);
+  lines.push(`# 5일/20일 평균 증감률: ${volumeAdvanced.changeRate.toFixed(1)}%`);
   lines.push('');
 
   lines.push(`### 매매 전략`);
-  lines.push(`- 종합 판단: ${strategy.overallLabel}`);
-  lines.push(`- 매수 조건: ${strategy.buyScore}/3, 매도 조건: ${strategy.sellScore}/3`);
+  lines.push(`# 종합 판단: ${strategy.overallLabel}`);
+  lines.push(`# 매수 조건: ${strategy.buyScore}/3, 매도 조건: ${strategy.sellScore}/3`);
   lines.push('');
 
   return lines.join('\n');
 }
 
 // ── 메인 컴포넌트 ────────────────────────────────────────
-export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, stockCode, includeNews }) {
+export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, stockCode, includeNews, stockInfo }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -241,7 +274,7 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
         avgPrice: Number(holdingAvgPrice) || 0,
       };
 
-      let prompt = buildCDEPrompt(analysis, positionInfo);
+      let prompt = buildCDEPrompt(analysis, positionInfo, stockInfo);
 
       // 멀티 타임프레임: 추가 차트 데이터 조회 + 분석
       if (multiTimeframe && token && stockCode) {
@@ -276,7 +309,7 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
       }
 
       const raw = await requestAIAnalysis(prompt);
-      const parsed = JSON.parse(raw);
+      const parsed = typeof raw === 'object' ? raw : JSON.parse(raw);
       setResult(parsed);
 
       // 자동 저장
@@ -305,7 +338,7 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
     } finally {
       setLoading(false);
     }
-  }, [analysis, positionType, holdingShares, holdingAvgPrice, multiTimeframe, includeNews, token, stockCode, altChartType, baseDate, stockName, currentChartType]);
+  }, [analysis, positionType, holdingShares, holdingAvgPrice, multiTimeframe, includeNews, token, stockCode, altChartType, baseDate, stockName, currentChartType, stockInfo]);
 
   if (!analysis?.structure || !analysis?.strategy) return null;
 

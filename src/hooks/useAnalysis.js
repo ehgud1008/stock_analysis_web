@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { fetchToken, fetchChartData } from '../api/kiwoomApi';
+import { fetchToken, fetchChartData, fetchStockInfo } from '../api/kiwoomApi';
 import { analyzeAll } from '../features/analysis/indicators';
 
 /**
@@ -23,6 +23,7 @@ const INITIAL_STATE = {
 
   // 데이터
   chartData: null,
+  stockInfo: null,
   analysis: null,
 
   // 에러
@@ -41,6 +42,10 @@ export function useAnalysis() {
     updateState({ status: 'loading_token', error: null });
     try {
       const result = await fetchToken();
+      if (!result.success) {
+        updateState({ status: 'error', error: result.error, token: result.error });
+        return;
+      }
       updateState({ status: 'loaded_token', token: result.token });
     } catch (err) {
       updateState({ status: 'error', error: `토큰 조회 실패: ${err.message}` });
@@ -82,15 +87,17 @@ export function useAnalysis() {
       return;
     }
 
-    updateState({ status: 'fetching_data', error: null, chartData: null, analysis: null });
+    updateState({ status: 'fetching_data', error: null, chartData: null, stockInfo: null, analysis: null });
     try {
-      const data = await fetchChartData(
-        state.token,
-        state.stockCode,
-        state.chartType,
-        state.baseDate
-      );
-      updateState({ chartData: data, status: 'analyzing' });
+      // 차트 데이터와 종목 정보를 병렬 조회
+      const [data, stockInfoData] = await Promise.all([
+        fetchChartData(state.token, state.stockCode, state.chartType, state.baseDate),
+        fetchStockInfo(state.token, state.stockCode).catch(err => {
+          console.warn('종목 정보 조회 실패 (분석은 계속):', err.message);
+          return null;
+        }),
+      ]);
+      updateState({ chartData: data, stockInfo: stockInfoData, status: 'analyzing' });
 
       // 자동 기술 분석 — 응답에서 차트 배열 키를 자동 탐색
       const chartArray = Object.values(data).find(

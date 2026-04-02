@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 function loadPromptMd() {
   return readFileSync(join(process.cwd(), 'public', 'prompt.md'), 'utf-8');
@@ -18,7 +18,7 @@ function parsePromptMd(md) {
   return { systemInstruction, analysisInstructions };
 }
 
-export default async function handler(req, res) {
+export default async function handler(req, res) {  debugger
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 4000,
+            maxOutputTokens: 8192,
             responseMimeType: 'application/json',
           },
         }),
@@ -67,6 +67,13 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
+
+    // 응답이 토큰 한도로 잘렸는지 확인
+    const finishReason = data.candidates?.[0]?.finishReason;
+    if (finishReason === 'MAX_TOKENS') {
+      throw new Error('AI 응답이 너무 길어 중간에 잘렸습니다. 다시 시도해 주세요.');
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');

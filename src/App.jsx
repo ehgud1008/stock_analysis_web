@@ -3,10 +3,12 @@ import { useAnalysis } from './hooks/useAnalysis';
 import TokenPanel from './features/token/TokenPanel';
 import StockInput from './features/stock/StockInput';
 import AnalysisPanel from './features/analysis/AnalysisPanel';
+import StockInfoPanel from './features/analysis/StockInfoPanel';
 import StrategyPanel from './features/analysis/StrategyPanel';
 import AIAnalysisPanel from './features/analysis/AIAnalysisPanel';
 import HistoryPanel from './features/history/HistoryPanel';
 import DiggingPanel from './features/digging/DiggingPanel';
+import ApiTestPanel from './features/apitest/ApiTestPanel';
 import './App.css';
 
 function App() {
@@ -23,7 +25,7 @@ function App() {
   } = useAnalysis();
 
   const [activeTab, setActiveTab] = useState('analysis');
-  const [analysisSubTab, setAnalysisSubTab] = useState('stock'); // 'stock' | 'digging'
+  const [analysisSubTab, setAnalysisSubTab] = useState('stock'); // 'stock' | 'digging' | 'apitest'
   const isFetching = state.status === 'fetching_data' || state.status === 'analyzing';
 
   return (
@@ -90,6 +92,12 @@ function App() {
               >
                 🔍 신규종목 디깅
               </button>
+              <button
+                className={`app__sub-tab ${analysisSubTab === 'apitest' ? 'app__sub-tab--active' : ''}`}
+                onClick={() => setAnalysisSubTab('apitest')}
+              >
+                🔧 전문 테스트
+              </button>
             </nav>
 
             {analysisSubTab === 'stock' ? (
@@ -123,6 +131,9 @@ function App() {
                   <>
                     <AnalysisPanel analysis={state.analysis} />
 
+                    {/* 3.5 기업 정보 */}
+                    <StockInfoPanel stockInfo={state.stockInfo} stockName={state.stockName} />
+
                     {/* 4. 기술적 구조 분석 & 매매 전략 */}
                     <StrategyPanel analysis={state.analysis} />
 
@@ -134,12 +145,15 @@ function App() {
                       token={state.token}
                       stockCode={state.stockCode}
                       includeNews={state.includeNews}
+                      stockInfo={state.stockInfo}
                     />
                   </>
                 )}
               </>
-            ) : (
+            ) : analysisSubTab === 'digging' ? (
               <DiggingPanel />
+            ) : (
+              <ApiTestPanel token={state.token} />
             )}
           </>
         ) : (

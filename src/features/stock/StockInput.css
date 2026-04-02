@@ -72,6 +72,53 @@
   border-color: var(--accent);
 }
 
+/* ── Today Toggle (inline in date input) ─────────────── */
+
+.stock-input__date-wrapper {
+  position: relative;
+}
+
+.stock-input__date-input {
+  padding-right: 60px !important;
+}
+
+.stock-input__today-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  user-select: none;
+}
+
+.stock-input__today-toggle input[type="checkbox"] {
+  display: none;
+}
+
+.stock-input__today-pill {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.stock-input__today-pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.stock-input__today-toggle input[type="checkbox"]:checked ~ .stock-input__today-pill {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* ── News Toggle ──────────────────────────────────────── */
 
 .stock-input__news-label {

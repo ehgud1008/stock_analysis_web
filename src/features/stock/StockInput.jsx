@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import './StockInput.css';
 
 const CHART_TYPES = [
@@ -47,6 +47,11 @@ export default function StockInput({
   isDisabled,
   isLoading,
 }) {
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
   const [stocks, setStocks] = useState([]);
   const [query, setQuery] = useState('');
   const [filtered, setFiltered] = useState([]);
@@ -228,13 +233,29 @@ export default function StockInput({
 
         <div className="stock-input__field">
           <label className="stock-input__label" htmlFor="baseDate">기준일자</label>
-          <input
-            id="baseDate"
-            className="input"
-            type="date"
-            value={baseDate}
-            onChange={(e) => onBaseDateChange(e.target.value)}
-          />
+          <div className="stock-input__date-wrapper">
+            <input
+              id="baseDate"
+              className="input stock-input__date-input"
+              type="date"
+              value={baseDate}
+              onChange={(e) => onBaseDateChange(e.target.value)}
+            />
+            <label className="stock-input__today-toggle">
+              <input
+                type="checkbox"
+                checked={baseDate === todayStr}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    onBaseDateChange(todayStr);
+                  } else {
+                    onBaseDateChange('');
+                  }
+                }}
+              />
+              <span className="stock-input__today-pill">오늘</span>
+            </label>
+          </div>
         </div>
 
         <div className="stock-input__field">
