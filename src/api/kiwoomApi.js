@@ -131,8 +131,7 @@ export async function fetchStockInfo(token, stockCode) {
           'next-key': '',
         },
         body: {
-          // stk_cd: stockCode,
-          stk_cd: 'KS11',
+          stk_cd: stockCode,
         },
       }),
     });
