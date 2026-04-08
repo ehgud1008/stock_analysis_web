@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import analysisResponseSchema from '../../lib/analysisSchema.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -33,12 +34,12 @@ export default async function handler(req, res) {  debugger
     return res.status(400).json({ error: 'prompt가 필요합니다.' });
   }
 
-  try {
+  try {debugger
     const md = loadPromptMd();
     const { systemInstruction, analysisInstructions } = parsePromptMd(md);
     const fullUserPrompt = prompt + '\n\n' + analysisInstructions;
 
-    const response = await fetch(
+    const response = await fetch( 
       `${GEMINI_URL}?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
@@ -54,8 +55,9 @@ export default async function handler(req, res) {  debugger
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 8192,
+            maxOutputTokens: 65536,
             responseMimeType: 'application/json',
+            responseSchema: analysisResponseSchema,
           },
         }),
       }
@@ -70,13 +72,28 @@ export default async function handler(req, res) {  debugger
 
     // 응답이 토큰 한도로 잘렸는지 확인
     const finishReason = data.candidates?.[0]?.finishReason;
-    if (finishReason === 'MAX_TOKENS') {
-      throw new Error('AI 응답이 너무 길어 중간에 잘렸습니다. 다시 시도해 주세요.');
+    console.log('📋 finishReason:', finishReason);
+
+    if (finishReason && finishReason !== 'STOP') {
+      const reasonMsg = {
+        MAX_TOKENS: 'AI 응답이 토큰 한도로 중간에 잘렸습니다.',
+        SAFETY: 'AI 안전 필터에 의해 응답이 차단되었습니다.',
+        RECITATION: '저작권 관련 필터에 의해 응답이 차단되었습니다.',
+      };
+      throw new Error(reasonMsg[finishReason] || `AI 응답이 비정상 종료되었습니다 (${finishReason}). 다시 시도해 주세요.`);
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');
+    }
+
+    // JSON 파싱 검증 (프론트에서 파싱 에러 방지)
+    try {
+      JSON.parse(text);
+    } catch (parseErr) {
+      console.error('⚠️ Gemini가 불완전한 JSON을 반환:', text.slice(-200));
+      throw new Error('AI 응답이 불완전한 JSON입니다. 다시 시도해 주세요.');
     }
 
     return res.json({ text });

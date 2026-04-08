@@ -3,6 +3,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import analysisResponseSchema from '../lib/analysisSchema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -149,7 +150,7 @@ app.delete('/serv/compare/:id', async (req, res) => {
 // ── Gemini AI 분석 (/api/ai) ──────────────────────────────
 
 // AI 단일 종목 분석
-app.post('/api/ai/analyze', async (req, res) => { debugger
+app.post('/api/ai/analyze', async (req, res) => {
   if (!GEMINI_API_KEY) {
     return res.status(500).json({ error: 'GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
@@ -167,17 +168,28 @@ app.post('/api/ai/analyze', async (req, res) => { debugger
     const analysisInstructions = instrIdx >= 0 ? md.slice(instrIdx).trim() : '';
     const fullUserPrompt = prompt + '\n\n' + analysisInstructions;
 
+    const generationConfig = {
+      temperature: 0.3,
+      maxOutputTokens: 65536,
+      responseMimeType: 'application/json',
+      responseSchema: analysisResponseSchema,
+    };
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🤖 [AI 분석 요청]', new Date().toLocaleString('ko-KR'));
+    console.log('📌 모델:', GEMINI_URL);
+    console.log('⚙️  설정:', JSON.stringify(generationConfig, null, 2));
+    console.log('📝 시스템 지시문 길이:', systemInstruction.length, '자');
+    console.log('📄 사용자 프롬프트 길이:', fullUserPrompt.length, '자');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
     const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         system_instruction: { parts: [{ text: systemInstruction }] },
         contents: [{ parts: [{ text: fullUserPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 4000,
-          responseMimeType: 'application/json',
-        },
+        generationConfig,
       }),
     });
 
@@ -187,8 +199,29 @@ app.post('/api/ai/analyze', async (req, res) => { debugger
     }
 
     const data = await response.json();
+
+    const finishReason = data.candidates?.[0]?.finishReason;
+    console.log('📋 finishReason:', finishReason);
+
+    if (finishReason && finishReason !== 'STOP') {
+      const reasonMsg = {
+        MAX_TOKENS: 'AI 응답이 토큰 한도로 중간에 잘렸습니다.',
+        SAFETY: 'AI 안전 필터에 의해 응답이 차단되었습니다.',
+        RECITATION: '저작권 관련 필터에 의해 응답이 차단되었습니다.',
+      };
+      throw new Error(reasonMsg[finishReason] || `AI 응답이 비정상 종료되었습니다 (${finishReason}). 다시 시도해 주세요.`);
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');
+
+    // JSON 파싱 검증
+    try {
+      JSON.parse(text);
+    } catch (parseErr) {
+      console.error('⚠️ Gemini가 불완전한 JSON을 반환:', text.slice(-200));
+      throw new Error('AI 응답이 불완전한 JSON입니다. 다시 시도해 주세요.');
+    }
 
     return res.json({ text });
   } catch (err) {
@@ -215,7 +248,7 @@ app.post('/api/ai/compare', async (req, res) => { debugger
     const compareInstructions = instrIdx >= 0 ? md.slice(instrIdx).trim() : '';
     const fullUserPrompt = stocksJson + '\n\n' + compareInstructions;
 
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
+    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -223,7 +256,7 @@ app.post('/api/ai/compare', async (req, res) => { debugger
         contents: [{ parts: [{ text: fullUserPrompt }] }],
         generationConfig: {
           temperature: 0.3,
-          maxOutputTokens: 4000,
+          maxOutputTokens: 8192,
           responseMimeType: 'application/json',
         },
       }),
