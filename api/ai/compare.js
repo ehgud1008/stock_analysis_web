@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
+import compareResponseSchema from '../../lib/compareSchema.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -18,7 +19,7 @@ function parseComparePromptMd(md) {
   return { systemInstruction, compareInstructions };
 }
 
-export default async function handler(req, res) {  debugger
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -54,8 +55,9 @@ export default async function handler(req, res) {  debugger
           ],
           generationConfig: {
             temperature: 0.3,
-            maxOutputTokens: 4000,
+            maxOutputTokens: 65536,
             responseMimeType: 'application/json',
+            responseSchema: compareResponseSchema,
           },
         }),
       }
@@ -67,9 +69,30 @@ export default async function handler(req, res) {  debugger
     }
 
     const data = await response.json();
+
+    const finishReason = data.candidates?.[0]?.finishReason;
+    console.log('📋 [비교분석] finishReason:', finishReason);
+
+    if (finishReason && finishReason !== 'STOP') {
+      const reasonMsg = {
+        MAX_TOKENS: 'AI 응답이 토큰 한도로 중간에 잘렸습니다.',
+        SAFETY: 'AI 안전 필터에 의해 응답이 차단되었습니다.',
+        RECITATION: '저작권 관련 필터에 의해 응답이 차단되었습니다.',
+      };
+      throw new Error(reasonMsg[finishReason] || `AI 응답이 비정상 종료되었습니다 (${finishReason}). 다시 시도해 주세요.`);
+    }
+
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       throw new Error('Gemini 응답에서 텍스트를 추출할 수 없습니다.');
+    }
+
+    // JSON 파싱 검증
+    try {
+      JSON.parse(text);
+    } catch (parseErr) {
+      console.error('⚠️ [비교분석] Gemini가 불완전한 JSON을 반환:', text.slice(-200));
+      throw new Error('AI 응답이 불완전한 JSON입니다. 다시 시도해 주세요.');
     }
 
     return res.json({ text });
@@ -77,3 +100,4 @@ export default async function handler(req, res) {  debugger
     return res.status(500).json({ error: `비교 분석 요청 실패: ${err.message}` });
   }
 }
+

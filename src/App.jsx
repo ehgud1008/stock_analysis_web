@@ -4,6 +4,7 @@ import TokenPanel from './features/token/TokenPanel';
 import StockInput from './features/stock/StockInput';
 import AnalysisPanel from './features/analysis/AnalysisPanel';
 import StockInfoPanel from './features/analysis/StockInfoPanel';
+import ValuationAnalysis from './features/analysis/ValuationAnalysis';
 import StrategyPanel from './features/analysis/StrategyPanel';
 import AIAnalysisPanel from './features/analysis/AIAnalysisPanel';
 import HistoryPanel from './features/history/HistoryPanel';
@@ -133,6 +134,9 @@ function App() {
 
                     {/* 3.5 기업 정보 */}
                     <StockInfoPanel stockInfo={state.stockInfo} stockName={state.stockName} />
+
+                    {/* 3.6 밸류에이션 종합 분석 */}
+                    <ValuationAnalysis stockInfo={state.stockInfo} />
 
                     {/* 4. 기술적 구조 분석 & 매매 전략 */}
                     <StrategyPanel analysis={state.analysis} />

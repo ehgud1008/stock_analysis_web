@@ -593,93 +593,265 @@ export function detectBollingerSqueeze(closePrices, period = 20, lookback = 20) 
   };
 }
 
-// ── B. 매매 전략 도출 ────────────────────────────────────
+// ── B. 매매 전략 도출 (가중 점수제) ─────────────────────────
 
 /**
- * 매수/매도 조건 평가
+ * 매수/매도 조건 가중 점수 평가
+ * - 추세 (25점) + 돌파/지지 (25점) + 거래량 (20점) + 보조지표 (30점) = 100점
  */
-export function deriveTradingStrategy(trendStructure, ma20, currentPrice, volumeAdv, supportResistance, latestCandle) {
+export function deriveTradingStrategy({
+  trendStructure, ma20, ma60, currentPrice,
+  volumeAdv, supportResistance, latestCandle,
+  ichimokuSignal, macd, stochastic, rsiSignal, bollingerSignal,
+}) {
   const buyConditions = [];
   const sellConditions = [];
 
-  // 매수 조건 1: 상승 추세 + 20MA 위
-  const cond1 = trendStructure.direction === '상승' && currentPrice > (ma20 || 0);
+  // ═══════════════════════════════════════════════════════
+  //  매수 조건 (가중 합산)
+  // ═══════════════════════════════════════════════════════
+
+  // ── 추세 (최대 25점) ──
+  const isHHHL = trendStructure.pattern.includes('HH') && trendStructure.pattern.includes('HL');
   buyConditions.push({
-    label: '상승 추세 + 20MA 위',
-    met: cond1,
-    desc: cond1
-      ? `현재 상승 추세이며 가격(${currentPrice.toLocaleString()})이 20MA 위에 있습니다.`
-      : `상승 추세가 아니거나 가격이 20MA 아래에 있습니다.`,
+    category: 'trend', label: 'HH-HL 상승 추세 패턴', weight: 15, met: isHHHL,
+    desc: isHHHL
+      ? 'Higher High + Higher Low 패턴으로 상승 추세가 확인됩니다.'
+      : `현재 추세 패턴(${trendStructure.pattern || '판별불가'})은 전형적인 상승 추세가 아닙니다.`,
   });
 
-  // 매수 조건 2: 저항 돌파 후 지지 확인
-  const cond2 = supportResistance.recentBreakout !== null && supportResistance.nearestSupport !== null;
+  const maAligned = ma20 !== null && ma60 !== null && ma20 > ma60;
   buyConditions.push({
-    label: '저항 돌파 후 지지 확인',
-    met: cond2,
-    desc: cond2
-      ? `최근 ${supportResistance.recentBreakout.level.toLocaleString()}원 저항을 돌파했으며, ${supportResistance.nearestSupport.price.toLocaleString()}원에서 지지가 확인됩니다.`
-      : '최근 저항 돌파가 확인되지 않았습니다.',
+    category: 'trend', label: 'MA 정배열 (20MA > 60MA)', weight: 5, met: maAligned,
+    desc: maAligned
+      ? `20MA(${Math.round(ma20).toLocaleString()})가 60MA(${Math.round(ma60).toLocaleString()}) 위에 위치합니다.`
+      : 'MA 정배열이 아닙니다.',
   });
 
-  // 매수 조건 3: 거래량 동반 고점 돌파
-  const cond3 = volumeAdv.breakoutVolume && supportResistance.recentBreakout !== null;
+  const aboveMA20 = ma20 !== null && currentPrice > ma20;
   buyConditions.push({
-    label: '거래량 동반 고점 돌파',
-    met: cond3,
-    desc: cond3
-      ? `거래량(${volumeAdv.latestVolume.toLocaleString()})이 20일 평균의 1.5배 이상으로, 돌파에 거래량이 동반되었습니다.`
+    category: 'trend', label: '가격 > 20MA', weight: 5, met: aboveMA20,
+    desc: aboveMA20
+      ? `현재가(${currentPrice.toLocaleString()})가 20MA(${Math.round(ma20).toLocaleString()}) 위에 있습니다.`
+      : '현재가가 20MA 아래에 있어 단기 약세입니다.',
+  });
+
+  // ── 돌파/지지 (최대 25점) ──
+  const breakoutDone = supportResistance.recentBreakout !== null;
+  buyConditions.push({
+    category: 'breakout', label: '저항선 돌파 완료', weight: 20, met: breakoutDone,
+    desc: breakoutDone
+      ? `${supportResistance.recentBreakout.level.toLocaleString()}원 저항을 돌파했습니다.`
+      : '아직 저항선을 돌파하지 못했습니다.',
+  });
+
+  const nearR = supportResistance.nearestResistance;
+  const gapPct = nearR ? ((nearR.price - currentPrice) / currentPrice * 100) : null;
+  const breakoutNear = !breakoutDone && nearR && gapPct <= 2;
+  buyConditions.push({
+    category: 'breakout', label: '돌파 임박 (저항선 2% 이내)', weight: 12, met: breakoutNear,
+    desc: breakoutNear
+      ? `현재가가 저항선(${nearR.price.toLocaleString()}원)까지 ${gapPct.toFixed(1)}%로 돌파 임박 상태입니다.`
+      : nearR
+        ? `저항선(${nearR.price.toLocaleString()}원)까지 ${gapPct.toFixed(1)}% 남았습니다.`
+        : '상방에 뚜렷한 저항선이 없습니다.',
+  });
+
+  const hasSupport = supportResistance.nearestSupport !== null;
+  buyConditions.push({
+    category: 'breakout', label: '하방 지지선 확인', weight: 5, met: hasSupport,
+    desc: hasSupport
+      ? `${supportResistance.nearestSupport.price.toLocaleString()}원에서 지지가 확인됩니다.`
+      : '명확한 지지선이 확인되지 않습니다.',
+  });
+
+  // ── 거래량 (최대 20점) ──
+  const volBreakout = volumeAdv.breakoutVolume;
+  buyConditions.push({
+    category: 'volume', label: '거래량 동반 돌파 (1.5배)', weight: 15, met: volBreakout,
+    desc: volBreakout
+      ? `거래량(${volumeAdv.latestVolume.toLocaleString()})이 20일 평균의 1.5배 이상으로 강한 수급입니다.`
       : '거래량 동반 돌파가 확인되지 않았습니다.',
   });
 
-  // 매도 조건 1: 직전 저점 이탈
-  const lastSupport = supportResistance.nearestSupport;
-  const sell1 = lastSupport && currentPrice < lastSupport.price;
+  const volIncreasing = volumeAdv.changeRate > 0;
+  buyConditions.push({
+    category: 'volume', label: '거래량 증가 추세', weight: 5, met: volIncreasing,
+    desc: volIncreasing
+      ? `5일 평균 거래량이 20일 평균 대비 ${volumeAdv.changeRate.toFixed(1)}% 증가합니다.`
+      : `거래량이 ${Math.abs(volumeAdv.changeRate).toFixed(1)}% 감소 추세입니다.`,
+  });
+
+  // ── 보조지표 (최대 30점) ──
+  const ichiBullish = ichimokuSignal && ichimokuSignal.signal === 'bullish';
+  buyConditions.push({
+    category: 'indicator', label: '일목균형표 강세', weight: 8, met: ichiBullish,
+    desc: ichiBullish
+      ? `일목균형표가 강세 신호(${ichimokuSignal.label})를 나타냅니다.`
+      : `일목균형표: ${ichimokuSignal?.label || '데이터 부족'}`,
+  });
+
+  const macdBullish = macd && (macd.histogram > 0 || macd.cross === 'golden');
+  buyConditions.push({
+    category: 'indicator', label: 'MACD 상승 모멘텀', weight: 8, met: macdBullish,
+    desc: macdBullish
+      ? `MACD: ${macd.label}${macd.cross === 'golden' ? ' (골든크로스!)' : ''}`
+      : `MACD: ${macd?.label || '데이터 부족'}`,
+  });
+
+  const stochBullish = stochastic && (stochastic.cross === 'golden' || stochastic.signal?.level === 'oversold');
+  buyConditions.push({
+    category: 'indicator', label: '스토캐스틱 매수 신호', weight: 7, met: stochBullish,
+    desc: stochBullish
+      ? `스토캐스틱: ${stochastic.signal?.label}${stochastic.cross === 'golden' ? ' (골든크로스!)' : ''}`
+      : `스토캐스틱: ${stochastic?.signal?.label || '데이터 부족'}`,
+  });
+
+  const rsiGood = rsiSignal && (rsiSignal.level === 'neutral' || rsiSignal.level === 'oversold');
+  buyConditions.push({
+    category: 'indicator', label: 'RSI 양호 구간', weight: 4, met: rsiGood,
+    desc: `RSI: ${rsiSignal?.label || '데이터 부족'}`,
+  });
+
+  const bbLower = bollingerSignal && (bollingerSignal.position === 'near_lower' || bollingerSignal.position === 'below');
+  buyConditions.push({
+    category: 'indicator', label: '볼린저 하단 반등 기대', weight: 3, met: bbLower,
+    desc: `볼린저: ${bollingerSignal?.label || '데이터 부족'}`,
+  });
+
+  // ═══════════════════════════════════════════════════════
+  //  매도 조건 (가중 합산)
+  // ═══════════════════════════════════════════════════════
+
+  // ── 추세 (최대 25점) ──
+  const isLHLL = trendStructure.pattern.includes('LH') && trendStructure.pattern.includes('LL');
   sellConditions.push({
-    label: '직전 저점 이탈',
-    met: sell1,
-    desc: sell1
-      ? `현재가가 직전 지지선(${lastSupport.price.toLocaleString()})을 하향 이탈했습니다.`
+    category: 'trend', label: 'LH-LL 하락 추세 패턴', weight: 15, met: isLHLL,
+    desc: isLHLL
+      ? 'Lower High + Lower Low 패턴으로 하락 추세가 확인됩니다.'
+      : `현재 추세 패턴(${trendStructure.pattern || '판별불가'})은 전형적인 하락 추세가 아닙니다.`,
+  });
+
+  const maReversed = ma20 !== null && ma60 !== null && ma20 < ma60;
+  sellConditions.push({
+    category: 'trend', label: 'MA 역배열 (20MA < 60MA)', weight: 5, met: maReversed,
+    desc: maReversed
+      ? '20MA가 60MA 아래에 위치하여 중기 하락 추세입니다.'
+      : 'MA 역배열이 아닙니다.',
+  });
+
+  const belowMA20 = ma20 !== null && currentPrice < ma20;
+  sellConditions.push({
+    category: 'trend', label: '가격 < 20MA', weight: 5, met: belowMA20,
+    desc: belowMA20
+      ? `현재가가 20MA(${Math.round(ma20).toLocaleString()}) 아래에 있어 단기 약세입니다.`
+      : '현재가가 20MA 위에 있어 안정적입니다.',
+  });
+
+  // ── 이탈 (최대 25점) ──
+  const supportBreak = supportResistance.recentBreakdown != null;
+  sellConditions.push({
+    category: 'breakout', label: '직전 지지선 이탈', weight: 20, met: supportBreak,
+    desc: supportBreak
+      ? `지지선(${supportResistance.recentBreakdown.level.toLocaleString()}원)을 하향 이탈했습니다.`
       : '직전 지지선을 유지하고 있습니다.',
   });
 
-  // 매도 조건 2: 20MA 하향 이탈
-  const sell2 = ma20 !== null && currentPrice < ma20;
   sellConditions.push({
-    label: '20MA 하향 이탈',
-    met: sell2,
-    desc: sell2
-      ? `현재가(${currentPrice.toLocaleString()})가 20MA(${Math.round(ma20).toLocaleString()}) 아래에 있습니다.`
-      : `현재가가 20MA 위에 있어 안정적입니다.`,
+    category: 'breakout', label: '20MA 하향 이탈', weight: 5, met: belowMA20,
+    desc: belowMA20
+      ? `현재가(${currentPrice.toLocaleString()})가 20MA 아래입니다.`
+      : '현재가가 20MA 위에 있어 안정적입니다.',
   });
 
-  // 매도 조건 3: 음봉 + 거래량 급증
-  const isBearishCandle = latestCandle && latestCandle.close < latestCandle.open;
-  const sell3 = volumeAdv.breakoutVolume && isBearishCandle;
+  // ── 거래량 (최대 20점) ──
+  const isBearish = latestCandle && latestCandle.close < latestCandle.open;
+  const bearishVol = volumeAdv.breakoutVolume && isBearish;
   sellConditions.push({
-    label: '음봉 + 거래량 급증',
-    met: sell3,
-    desc: sell3
-      ? `최근 봉이 음봉이며 거래량(${volumeAdv.latestVolume.toLocaleString()})이 20일 평균의 1.5배 이상으로 매도 압력이 강합니다.`
+    category: 'volume', label: '음봉 + 거래량 급증', weight: 15, met: bearishVol,
+    desc: bearishVol
+      ? `음봉에 거래량(${volumeAdv.latestVolume.toLocaleString()})이 급증하여 매도 압력이 강합니다.`
       : '음봉 + 거래량 급증 신호가 없습니다.',
   });
 
-  // 종합 판단
-  const buyScore = buyConditions.filter((c) => c.met).length;
-  const sellScore = sellConditions.filter((c) => c.met).length;
+  const volDecreasing = volumeAdv.decreasingTrend;
+  sellConditions.push({
+    category: 'volume', label: '5일 연속 거래량 감소', weight: 5, met: volDecreasing,
+    desc: volDecreasing
+      ? '최근 5일간 거래량이 연속 감소하고 있어 매수세가 약해지고 있습니다.'
+      : '거래량 감소 추세가 아닙니다.',
+  });
 
+  // ── 보조지표 (최대 30점) ──
+  const ichiBearish = ichimokuSignal && ichimokuSignal.signal === 'bearish';
+  sellConditions.push({
+    category: 'indicator', label: '일목균형표 약세', weight: 8, met: ichiBearish,
+    desc: ichiBearish
+      ? `일목균형표가 약세 신호(${ichimokuSignal.label})를 나타냅니다.`
+      : `일목균형표: ${ichimokuSignal?.label || '데이터 부족'}`,
+  });
+
+  const macdBearish = macd && (macd.histogram < 0 || macd.cross === 'dead');
+  sellConditions.push({
+    category: 'indicator', label: 'MACD 하락 모멘텀', weight: 8, met: macdBearish,
+    desc: macdBearish
+      ? `MACD: ${macd.label}${macd.cross === 'dead' ? ' (데드크로스!)' : ''}`
+      : `MACD: ${macd?.label || '데이터 부족'}`,
+  });
+
+  const stochBearish = stochastic && (stochastic.cross === 'dead' || stochastic.signal?.level === 'overbought');
+  sellConditions.push({
+    category: 'indicator', label: '스토캐스틱 매도 신호', weight: 7, met: stochBearish,
+    desc: stochBearish
+      ? `스토캐스틱: ${stochastic.signal?.label}${stochastic.cross === 'dead' ? ' (데드크로스!)' : ''}`
+      : `스토캐스틱: ${stochastic?.signal?.label || '데이터 부족'}`,
+  });
+
+  const rsiOverbought = rsiSignal && rsiSignal.level === 'overbought';
+  sellConditions.push({
+    category: 'indicator', label: 'RSI 과매수', weight: 4, met: rsiOverbought,
+    desc: `RSI: ${rsiSignal?.label || '데이터 부족'}`,
+  });
+
+  const bbUpper = bollingerSignal && (bollingerSignal.position === 'above' || bollingerSignal.position === 'near_upper');
+  sellConditions.push({
+    category: 'indicator', label: '볼린저 상단 과열', weight: 3, met: bbUpper,
+    desc: `볼린저: ${bollingerSignal?.label || '데이터 부족'}`,
+  });
+
+  // ═══════════════════════════════════════════════════════
+  //  가중 점수 계산 (0~100)
+  // ═══════════════════════════════════════════════════════
+  const maxBuyW = buyConditions.reduce((s, c) => s + c.weight, 0);
+  const maxSellW = sellConditions.reduce((s, c) => s + c.weight, 0);
+  const rawBuy = buyConditions.filter(c => c.met).reduce((s, c) => s + c.weight, 0);
+  const rawSell = sellConditions.filter(c => c.met).reduce((s, c) => s + c.weight, 0);
+
+  const buyScore = Math.round((rawBuy / maxBuyW) * 100);
+  const sellScore = Math.round((rawSell / maxSellW) * 100);
+  const netScore = buyScore - sellScore;
+
+  // ═══════════════════════════════════════════════════════
+  //  종합 판단
+  // ═══════════════════════════════════════════════════════
   let overallSignal, overallLabel;
-  if (buyScore >= 2 && sellScore === 0) {
+  if (buyScore >= 65 && sellScore < 30) {
     overallSignal = 'strong_buy';
     overallLabel = '강력 매수';
-  } else if (buyScore >= 1 && sellScore === 0) {
+  } else if (buyScore >= 45 && sellScore < 40) {
     overallSignal = 'buy';
-    overallLabel = '매수 관망';
-  } else if (sellScore >= 2) {
+    overallLabel = '매수 우위';
+  } else if (sellScore >= 65 && buyScore < 30) {
     overallSignal = 'strong_sell';
     overallLabel = '강력 매도';
-  } else if (sellScore >= 1 && buyScore === 0) {
+  } else if (sellScore >= 45 && buyScore < 40) {
     overallSignal = 'sell';
+    overallLabel = '매도 우위';
+  } else if (netScore > 15) {
+    overallSignal = 'lean_buy';
+    overallLabel = '매수 관망';
+  } else if (netScore < -15) {
+    overallSignal = 'lean_sell';
     overallLabel = '매도 관망';
   } else {
     overallSignal = 'neutral';
@@ -691,6 +863,7 @@ export function deriveTradingStrategy(trendStructure, ma20, currentPrice, volume
     sellConditions,
     buyScore,
     sellScore,
+    netScore,
     overallSignal,
     overallLabel,
   };
@@ -776,9 +949,20 @@ export function analyzeAll(chartData) {
     high: parsePrice(latestItem.high_pric),
     low: parsePrice(latestItem.low_pric),
   };
-  const strategy = deriveTradingStrategy(
-    trendStructure, ma.ma20, currentPrice, volumeAdvanced, supportResistance, latestCandle
-  );
+  const strategy = deriveTradingStrategy({
+    trendStructure,
+    ma20: ma.ma20,
+    ma60: ma.ma60,
+    currentPrice,
+    volumeAdv: volumeAdvanced,
+    supportResistance,
+    latestCandle,
+    ichimokuSignal,
+    macd,
+    stochastic,
+    rsiSignal,
+    bollingerSignal,
+  });
 
   return {
     summary,

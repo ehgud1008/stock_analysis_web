@@ -5,6 +5,27 @@ function formatDate(dt) {
   return `${dt.slice(0, 4)}.${dt.slice(4, 6)}.${dt.slice(6, 8)}`;
 }
 
+// ── 카테고리 그룹핑 헬퍼 ──
+const CATEGORY_LABELS = {
+  trend: '📐 추세',
+  breakout: '🚀 돌파 · 지지',
+  volume: '📊 거래량',
+  indicator: '📈 보조지표',
+};
+
+function groupByCategory(conditions) {
+  const groups = {};
+  conditions.forEach(c => {
+    if (!groups[c.category]) groups[c.category] = [];
+    groups[c.category].push(c);
+  });
+  return Object.entries(groups).map(([category, items]) => ({
+    category,
+    label: CATEGORY_LABELS[category] || category,
+    items,
+  }));
+}
+
 export default function StrategyPanel({ analysis }) {
   if (!analysis?.structure || !analysis?.strategy) return null;
 
@@ -157,19 +178,52 @@ export default function StrategyPanel({ analysis }) {
           </span>
         </div>
 
+        {/* 점수 오버뷰 */}
+        <div className="strategy-score-overview">
+          <div className="strategy-score-bar">
+            <div className="strategy-score-bar__header">
+              <span className="strategy-score-bar__label">📗 매수 점수</span>
+              <span className="strategy-score-bar__value strategy-score-bar__value--buy">{strategy.buyScore}</span>
+            </div>
+            <div className="strategy-score-bar__track">
+              <div className="strategy-score-bar__fill strategy-score-bar__fill--buy" style={{ width: `${strategy.buyScore}%` }} />
+            </div>
+          </div>
+          <div className="strategy-score-bar">
+            <div className="strategy-score-bar__header">
+              <span className="strategy-score-bar__label">📕 매도 점수</span>
+              <span className="strategy-score-bar__value strategy-score-bar__value--sell">{strategy.sellScore}</span>
+            </div>
+            <div className="strategy-score-bar__track">
+              <div className="strategy-score-bar__fill strategy-score-bar__fill--sell" style={{ width: `${strategy.sellScore}%` }} />
+            </div>
+          </div>
+          <div className="strategy-score-net">
+            순점수: <span className={`strategy-score-net__value ${strategy.netScore > 0 ? 'strategy-score-net__value--positive' : strategy.netScore < 0 ? 'strategy-score-net__value--negative' : ''}`}>{strategy.netScore > 0 ? '+' : ''}{strategy.netScore}</span>
+          </div>
+        </div>
+
         <div className="strategy-conditions">
           {/* 매수 조건 */}
           <div className="strategy-conditions__group">
             <h3 className="strategy-conditions__heading strategy-conditions__heading--buy">
-              📗 매수 조건 ({strategy.buyScore}/3 충족)
+              📗 매수 조건 ({strategy.buyScore}/100점)
             </h3>
-            {strategy.buyConditions.map((c, i) => (
-              <div key={i} className={`condition-item ${c.met ? 'condition-item--met' : 'condition-item--unmet'}`}>
-                <div className="condition-item__header">
-                  <span className="condition-item__icon">{c.met ? '✅' : '❌'}</span>
-                  <span className="condition-item__label">{c.label}</span>
-                </div>
-                <p className="condition-item__desc">{c.desc}</p>
+            {groupByCategory(strategy.buyConditions).map(({ category, label, items }) => (
+              <div key={category} className="strategy-category">
+                <h4 className="strategy-category__title">{label}</h4>
+                {items.map((c, i) => (
+                  <div key={i} className={`condition-item ${c.met ? 'condition-item--met' : 'condition-item--unmet'}`}>
+                    <div className="condition-item__header">
+                      <span className="condition-item__icon">{c.met ? '✅' : '❌'}</span>
+                      <span className="condition-item__label">{c.label}</span>
+                      <span className={`condition-item__weight ${c.met ? 'condition-item__weight--active' : ''}`}>
+                        {c.met ? `+${c.weight}` : `+0`}
+                      </span>
+                    </div>
+                    <p className="condition-item__desc">{c.desc}</p>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -177,15 +231,23 @@ export default function StrategyPanel({ analysis }) {
           {/* 매도 조건 */}
           <div className="strategy-conditions__group">
             <h3 className="strategy-conditions__heading strategy-conditions__heading--sell">
-              📕 매도 조건 ({strategy.sellScore}/3 충족)
+              📕 매도 조건 ({strategy.sellScore}/100점)
             </h3>
-            {strategy.sellConditions.map((c, i) => (
-              <div key={i} className={`condition-item ${c.met ? 'condition-item--met-sell' : 'condition-item--unmet'}`}>
-                <div className="condition-item__header">
-                  <span className="condition-item__icon">{c.met ? '🔴' : '⚪'}</span>
-                  <span className="condition-item__label">{c.label}</span>
-                </div>
-                <p className="condition-item__desc">{c.desc}</p>
+            {groupByCategory(strategy.sellConditions).map(({ category, label, items }) => (
+              <div key={category} className="strategy-category">
+                <h4 className="strategy-category__title">{label}</h4>
+                {items.map((c, i) => (
+                  <div key={i} className={`condition-item ${c.met ? 'condition-item--met-sell' : 'condition-item--unmet'}`}>
+                    <div className="condition-item__header">
+                      <span className="condition-item__icon">{c.met ? '🔴' : '⚪'}</span>
+                      <span className="condition-item__label">{c.label}</span>
+                      <span className={`condition-item__weight ${c.met ? 'condition-item__weight--active-sell' : ''}`}>
+                        {c.met ? `+${c.weight}` : `+0`}
+                      </span>
+                    </div>
+                    <p className="condition-item__desc">{c.desc}</p>
+                  </div>
+                ))}
               </div>
             ))}
           </div>

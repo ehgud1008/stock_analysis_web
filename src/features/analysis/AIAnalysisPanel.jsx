@@ -182,10 +182,13 @@ function buildCDEPrompt(analysis, positionInfo, stockInfo) {
 
   lines.push(`## B. 매매 전략 도출 결과`);
   lines.push(`# 종합 판단: ${strategy.overallLabel}`);
-  lines.push(`# 매수 조건 충족: ${strategy.buyScore}/3`);
-  strategy.buyConditions.forEach(c => lines.push(`  # ${c.met ? '✅' : '❌'} ${c.label}: ${c.desc}`));
-  lines.push(`# 매도 조건 충족: ${strategy.sellScore}/3`);
-  strategy.sellConditions.forEach(c => lines.push(`  # ${c.met ? '🔴' : '⚪'} ${c.label}: ${c.desc}`));
+  lines.push(`# 매수 점수: ${strategy.buyScore}/100`);
+  lines.push(`# 매도 점수: ${strategy.sellScore}/100`);
+  lines.push(`# 순점수 (매수-매도): ${strategy.netScore}`);
+  lines.push(`### 매수 조건 평가`);
+  strategy.buyConditions.forEach(c => lines.push(`  # ${c.met ? '✅' : '❌'} [${c.category}] ${c.label} (${c.weight}점): ${c.desc}`));
+  lines.push(`### 매도 조건 평가`);
+  strategy.sellConditions.forEach(c => lines.push(`  # ${c.met ? '🔴' : '⚪'} [${c.category}] ${c.label} (${c.weight}점): ${c.desc}`));
   lines.push('');
 
   return lines.join('\n');
@@ -239,7 +242,7 @@ function buildSecondaryAnalysisText(secondaryAnalysis, timeframeLabel) {
 
   lines.push(`### 매매 전략`);
   lines.push(`# 종합 판단: ${strategy.overallLabel}`);
-  lines.push(`# 매수 조건: ${strategy.buyScore}/3, 매도 조건: ${strategy.sellScore}/3`);
+  lines.push(`# 매수: ${strategy.buyScore}/100, 매도: ${strategy.sellScore}/100, 순점수: ${strategy.netScore}`);
   lines.push('');
 
   return lines.join('\n');
@@ -470,6 +473,15 @@ export default function AIAnalysisPanel({ analysis, stockName, baseDate, token, 
 
           {/* E. 시나리오 확률 */}
           {result.scenarios && <ScenarioCard data={result.scenarios} />}
+
+          {/* G. 보유종목 전략 */}
+          {positionType === 'holding' && result.holding_strategy && (
+            <HoldingStrategyCard
+              data={result.holding_strategy}
+              currentPrice={analysis.summary.currentPrice}
+              avgPrice={Number(holdingAvgPrice) || 0}
+            />
+          )}
 
           {/* F. 총 요약 */}
           {result.summary && <SummaryCard data={result.summary} />}
@@ -754,6 +766,120 @@ function SummaryCard({ data }) {
           })}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── G. 보유종목 전략 카드 ────────────────────────────────
+function HoldingStrategyCard({ data, currentPrice, avgPrice }) {
+  const actionColors = {
+    add_buy: 'var(--green)',
+    hold: 'var(--yellow)',
+    partial_sell: 'var(--red)',
+    full_sell: 'var(--red)',
+  };
+  const actionBg = {
+    add_buy: 'rgba(34, 197, 94, 0.08)',
+    hold: 'rgba(234, 179, 8, 0.08)',
+    partial_sell: 'rgba(239, 68, 68, 0.08)',
+    full_sell: 'rgba(239, 68, 68, 0.12)',
+  };
+  const actionEmoji = {
+    add_buy: '🟢',
+    hold: '🟡',
+    partial_sell: '🟠',
+    full_sell: '🔴',
+  };
+
+  const pnlPct = avgPrice > 0
+    ? ((currentPrice - avgPrice) / avgPrice * 100).toFixed(2)
+    : null;
+
+  return (
+    <div className="cde-card">
+      <h3 className="cde-card__title">
+        <span>📦</span> 보유종목 전략
+      </h3>
+
+      {/* 현재 보유 상태 요약 */}
+      {pnlPct !== null && (
+        <div className="cde-card__grid cde-card__grid--3">
+          <div className="cde-stat">
+            <span className="cde-stat__label">평균 매수가</span>
+            <span className="cde-stat__value">{avgPrice.toLocaleString()}원</span>
+          </div>
+          <div className="cde-stat">
+            <span className="cde-stat__label">현재가</span>
+            <span className="cde-stat__value">{currentPrice.toLocaleString()}원</span>
+          </div>
+          <div className="cde-stat">
+            <span className="cde-stat__label">수익률</span>
+            <span className={`cde-stat__value ${Number(pnlPct) >= 0 ? 'cde-stat__value--green' : 'cde-stat__value--red'}`}>
+              {Number(pnlPct) >= 0 ? '+' : ''}{pnlPct}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 포지션 액션 */}
+      <div
+        className="summary-card__decision"
+        style={{
+          borderColor: actionColors[data.action] || 'var(--border)',
+          background: actionBg[data.action] || 'transparent',
+        }}
+      >
+        <div className="summary-card__decision-header">
+          <span className="summary-card__decision-emoji">
+            {actionEmoji[data.action] || '⚪'}
+          </span>
+          <span
+            className="summary-card__decision-label"
+            style={{ color: actionColors[data.action] }}
+          >
+            {data.action_label}
+          </span>
+        </div>
+        {data.pnl_assessment && (
+          <p className="summary-card__decision-reason">{data.pnl_assessment}</p>
+        )}
+      </div>
+
+      {/* 비중 조정 */}
+      {data.position_adjustment && (
+        <p className="cde-card__note">📊 비중 조정: {data.position_adjustment}</p>
+      )}
+
+      {/* 보유 기준 손절가/목표가 */}
+      <div className="cde-card__price-levels">
+        <div className="price-level price-level--target1">
+          <span className="price-level__label">보유 목표가</span>
+          <span className="price-level__value">{Number(data.revised_target).toLocaleString()}원</span>
+          {avgPrice > 0 && (
+            <span className="price-level__pct">
+              (매수가 대비 {((data.revised_target - avgPrice) / avgPrice * 100).toFixed(1)}%)
+            </span>
+          )}
+        </div>
+        <div className="price-level price-level--current">
+          <span className="price-level__label">평균 매수가</span>
+          <span className="price-level__value">{avgPrice.toLocaleString()}원</span>
+        </div>
+        <div className="price-level price-level--stop">
+          <span className="price-level__label">보유 손절가</span>
+          <span className="price-level__value">{Number(data.revised_stop_loss).toLocaleString()}원</span>
+          {avgPrice > 0 && (
+            <span className="price-level__pct">
+              (매수가 대비 {((data.revised_stop_loss - avgPrice) / avgPrice * 100).toFixed(1)}%)
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* 전략 근거 */}
+      {data.reasoning && (
+        <p className="cde-card__reasoning">{data.reasoning}</p>
+      )}
     </div>
   );
 }
